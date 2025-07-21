@@ -1,1 +1,1690 @@
-c
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Physics Exam Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- Chosen Palette: Academic Blue & Neutrals with subtle gradients -->
+    <!-- Application Structure Plan: The SPA is structured as an interactive exam simulator with four distinct sections: 'Reference Tables', 'Units & Measurements', 'Dimensions', and 'Vectors & Scalars'. This task-oriented design is chosen for optimal usability, allowing users to quickly access reference material or jump to specific exam topics. A sticky top navigation bar facilitates seamless switching between sections. Each question is presented on a visually distinct card with a toggle button to reveal detailed, step-by-step solutions. This interactive approach supports self-paced learning and immediate feedback, transforming a static exam into a dynamic and engaging study tool. Global 'Reveal All' and 'Reset' functions provide convenient control over solution visibility. -->
+    <!-- Visualization & Content Choices: Most questions are text-based with interactive 'show solution' toggles (Goal: Inform/Test, Method: JS toggle). For Question 8 (Vector Addition), a Chart.js scatter plot is used to visually represent the displacement vectors and their resultant, offering an intuitive graphical understanding (Goal: Visualize Relationships, Library: Chart.js/Canvas). All mathematical formulas are rendered using KaTeX for high-quality, clear presentation, replacing static LaTeX. New tables for SI prefixes and common physical quantities with their dimensions and units are integrated as static content in the 'Reference Tables' section, serving as quick lookup tools (Goal: Inform/Organize, Method: HTML Table). The design prioritizes clarity, interactivity, and responsiveness, ensuring all content is easily consumable and aids deep understanding. NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #e0f2fe);
+        }
+        .katex-display {
+            margin: 0.5em 0;
+            overflow-x: auto; /* Allow horizontal scrolling for wide formulas */
+            padding: 5px 0;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Increased max-width for better chart visibility */
+            margin-left: auto;
+            margin-right: auto;
+            height: 380px; /* Adjusted height */
+            max-height: 450px; /* Adjusted max-height */
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .solution-content {
+            border-left: 4px solid #60a5fa; /* Blue left border for solutions */
+        }
+        .nav-btn.active {
+            background-color: #2563eb;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3), 0 2px 4px -1px rgba(37, 99, 235, 0.1);
+        }
+        .question-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .question-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem;
+            overflow: hidden; /* Ensures rounded corners apply to content */
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+        th {
+            background-color: #eff6ff; /* blue-50 */
+            font-weight: 600;
+            color: #1e40af; /* blue-800 */
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc; /* slate-50 */
+        }
+        tr:hover {
+            background-color: #f0f9ff; /* blue-50 */
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="app" class="container mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 drop-shadow-sm">University Physics Exam Simulator</h1>
+            <p class="mt-2 text-slate-600 max-w-2xl mx-auto text-lg font-bold italic">"Master the Universe, One Concept at a Time. No Weakness Allowed."</p>
+            <p class="mt-4 text-sm text-slate-500">Prepared by Sir Hicks Bozon404</p>
+        </header>
+
+        <nav class="bg-white rounded-lg shadow-xl p-3 mb-8 sticky top-4 z-10 border border-blue-100">
+            <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-3" id="nav-buttons">
+                <button data-section="section0" class="nav-btn bg-white text-slate-700 w-full sm:w-auto font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">Reference Tables</button>
+                <button data-section="section1" class="nav-btn bg-blue-600 text-white w-full sm:w-auto font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 active">Units & Measurements</button>
+                <button data-section="section2" class="nav-btn bg-white text-slate-700 w-full sm:w-auto font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">Dimensions</button>
+                <button data-section="section3" class="nav-btn bg-white text-slate-700 w-full sm:w-auto font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-500 transition-all duration-200">Vectors & Scalars</button>
+            </div>
+            <div class="flex justify-center mt-4 space-x-4">
+                 <button id="reveal-all" class="text-sm text-blue-600 hover:underline hover:text-blue-800 transition-colors duration-200">Reveal All Solutions</button>
+                 <button id="reset-all" class="text-sm text-red-600 hover:underline hover:text-red-800 transition-colors duration-200">Reset All</button>
+            </div>
+        </nav>
+
+        <main id="main-content">
+            <!-- Sections will be dynamically inserted here -->
+        </main>
+
+    </div>
+
+    <script>
+        const examData = {
+            section0: {
+                title: "Reference Tables",
+                intro: "This section provides quick reference tables for commonly used SI prefixes and fundamental physical quantities, their dimensions, and SI units. These tables are essential tools for dimensional analysis and unit conversions.",
+                content: `
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Common SI Prefixes</h3>
+                        <table class="bg-white">
+                            <thead>
+                                <tr>
+                                    <th>Prefix</th>
+                                    <th>Symbol</th>
+                                    <th>Factor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>tera</td><td>T</td><td>$10^{12}$</td></tr>
+                                <tr><td>giga</td><td>G</td><td>$10^9$</td></tr>
+                                <tr><td>mega</td><td>M</td><td>$10^6$</td></tr>
+                                <tr><td>kilo</td><td>k</td><td>$10^3$</td></tr>
+                                <tr><td>hecto</td><td>h</td><td>$10^2$</td></tr>
+                                <tr><td>deca</td><td>da</td><td>$10^1$</td></tr>
+                                <tr><td></td><td></td><td>$10^0$ (Base Unit)</td></tr>
+                                <tr><td>deci</td><td>d</td><td>$10^{-1}$</td></tr>
+                                <tr><td>centi</td><td>c</td><td>$10^{-2}$</td></tr>
+                                <tr><td>milli</td><td>m</td><td>$10^{-3}$</td></tr>
+                                <tr><td>micro</td><td>$\\mu$</td><td>$10^{-6}$</td></tr>
+                                <tr><td>nano</td><td>n</td><td>$10^{-9}$</td></tr>
+                                <tr><td>pico</td><td>p</td><td>$10^{-12}$</td></tr>
+                                <tr><td>femto</td><td>f</td><td>$10^{-15}$</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Common Physical Quantities, Dimensions, and SI Units</h3>
+                        <table class="bg-white">
+                            <thead>
+                                <tr>
+                                    <th>Quantity</th>
+                                    <th>Symbol</th>
+                                    <th>Dimension</th>
+                                    <th>SI Unit</th>
+                                    <th>Formula (Example)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Length</td><td>$L$</td><td>$[L]$</td><td>meter (m)</td><td></td></tr>
+                                <tr><td>Mass</td><td>$m$</td><td>$[M]$</td><td>kilogram (kg)</td><td></td></tr>
+                                <tr><td>Time</td><td>$t$</td><td>$[T]$</td><td>second (s)</td><td></td></tr>
+                                <tr><td>Electric Current</td><td>$I$</td><td>$[A]$</td><td>Ampere (A)</td><td></td></tr>
+                                <tr><td>Temperature</td><td>$T$</td><td>$[\\Theta]$</td><td>Kelvin (K)</td><td></td></tr>
+                                <tr><td>Amount of Substance</td><td>$n$</td><td>$[N]$</td><td>mole (mol)</td><td></td></tr>
+                                <tr><td>Luminous Intensity</td><td>$I_v$</td><td>$[J]$</td><td>candela (cd)</td><td></td></tr>
+                                <tr><td>Area</td><td>$A$</td><td>$[L^2]$</td><td>m$^2$</td><td>$A = L \\times W$</td></tr>
+                                <tr><td>Volume</td><td>$V$</td><td>$[L^3]$</td><td>m$^3$</td><td>$V = L \\times W \\times H$</td></tr>
+                                <tr><td>Velocity</td><td>$v$</td><td>$[LT^{-1}]$</td><td>m/s</td><td>$v = \\frac{\\Delta x}{\\Delta t}$</td></tr>
+                                <tr><td>Acceleration</td><td>$a$</td><td>$[LT^{-2}]$</td><td>m/s$^2$</td><td>$a = \\frac{\\Delta v}{\\Delta t}$</td></tr>
+                                <tr><td>Force</td><td>$F$</td><td>$[MLT^{-2}]$</td><td>Newton (N)</td><td>$F = ma$</td></tr>
+                                <tr><td>Energy / Work</td><td>$E, W$</td><td>$[ML^2T^{-2}]$</td><td>Joule (J)</td><td>$W = F \\cdot d$</td></tr>
+                                <tr><td>Power</td><td>$P$</td><td>$[ML^2T^{-3}]$</td><td>Watt (W)</td><td>$P = \\frac{W}{t}$</td></tr>
+                                <tr><td>Pressure</td><td>$P$</td><td>$[ML^{-1}T^{-2}]$</td><td>Pascal (Pa)</td><td>$P = \\frac{F}{A}$</td></tr>
+                                <tr><td>Frequency</td><td>$f$</td><td>$[T^{-1}]$</td><td>Hertz (Hz)</td><td>$f = \\frac{1}{T}$</td></tr>
+                                <tr><td>Angular Velocity</td><td>$\\omega$</td><td>$[T^{-1}]$</td><td>rad/s</td><td>$\\omega = \\frac{\\Delta \\theta}{\\Delta t}$</td></tr>
+                                <tr><td>Momentum</td><td>$p$</td><td>$[MLT^{-1}]$</td><td>kg$\\cdot$m/s</td><td>$p = mv$</td></tr>
+                                <tr><td>Impulse</td><td>$J$</td><td>$[MLT^{-1}]$</td><td>N$\\cdot$s</td><td>$J = F \\Delta t$</td></tr>
+                                <tr><td>Torque</td><td>$\\tau$</td><td>$[ML^2T^{-2}]$</td><td>N$\\cdot$m</td><td>$\\tau = r \\times F$</td></tr>
+                                <tr><td>Density</td><td>$\\rho$</td><td>$[ML^{-3}]$</td><td>kg/m$^3$</td><td>$\\rho = \\frac{m}{V}$</td></tr>
+                                <tr><td>Electric Charge</td><td>$q$</td><td>$[AT]$</td><td>Coulomb (C)</td><td>$q = It$</td></tr>
+                                <tr><td>Electric Potential</td><td>$V$</td><td>$[ML^2T^{-3}A^{-1}]$</td><td>Volt (V)</td><td>$V = \\frac{E}{q}$</td></tr>
+                                <tr><td>Resistance</td><td>$R$</td><td>$[ML^2T^{-3}A^{-2}]$</td><td>Ohm ($\\Omega$)</td><td>$R = \\frac{V}{I}$</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `
+            },
+            section1: {
+                title: "Units and Measurements",
+                intro: "This section tests your understanding of fundamental measurement concepts, including handling uncertainties, performing unit conversions, and distinguishing between precision and accuracy. These skills are the bedrock of experimental physics.",
+                questions: [
+                    {
+                        id: 'q1',
+                        title: 'Question 1: Volume of a Cylinder with Uncertainty',
+                        text: 'A student measures the length of a cylindrical rod using a Vernier caliper and its diameter using a micrometer screw gauge. The measurements are:<br>Length ($L$) = $15.24 \\pm 0.01 \\text{ cm}$<br>Diameter ($D$) = $1.250 \\pm 0.001 \\text{ cm}$<br>Calculate the volume of the cylinder ($V = \\frac{\\pi D^2 L}{4}$) and express your answer with the correct number of significant figures and its absolute uncertainty.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Step 1: Calculate the Nominal Volume (V)</p>
+                            <p>The formula for the volume of a cylinder is given as $V = \\frac{\\pi D^2 L}{4}$. We will substitute the measured values of $D$ and $L$ into this formula.</p>
+                            <div class="formula">V = \\frac{\\pi (1.250 \\text{ cm})^2 (15.24 \\text{ cm})}{4}</div>
+                            <div class="formula">V = \\frac{\\pi (1.5625 \\text{ cm}^2) (15.24 \\text{ cm})}{4}</div>
+                            <div class="formula">V = \\frac{74.96875 \\pi \\text{ cm}^3}{4} \\approx 18.7421875 \\pi \\text{ cm}^3</div>
+                            <div class="formula">V \\approx 18.713501... \\text{ cm}^3</div>
+                            <p><strong>Significant Figures Consideration:</strong> The length ($L$) has 4 significant figures (15.24 cm). The diameter ($D$) has 4 significant figures (1.250 cm). When multiplying or dividing, the result should be rounded to the least number of significant figures in the input values. In this case, both have 4 significant figures, so our volume should be rounded to 4 significant figures.</p>
+                            <p>So, <strong class="text-blue-600">V \\approx 18.71 \\text{ cm}^3</strong> (rounded to 4 significant figures).</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">Step 2: Calculate the Relative Uncertainties of Individual Measurements</p>
+                            <p>The relative uncertainty for a quantity $X$ with absolute uncertainty $\\Delta X$ is $\\frac{\\Delta X}{X}$.</p>
+                            <p>Relative uncertainty for Length ($\\frac{\\Delta L}{L}$):</p>
+                            <div class="formula">\\frac{\\Delta L}{L} = \\frac{0.01 \\text{ cm}}{15.24 \\text{ cm}} \\approx 0.00065616</div>
+                            <p>Relative uncertainty for Diameter ($\\frac{\\Delta D}{D}$):</p>
+                            <div class="formula">\\frac{\\Delta D}{D} = \\frac{0.001 \\text{ cm}}{1.250 \\text{ cm}} \\approx 0.00080000</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Calculate the Total Relative Uncertainty for Volume</p>
+                            <p>For quantities combined by multiplication or division (like $V = k D^2 L$), the fractional (or relative) uncertainties add in quadrature. If a quantity is raised to a power (e.g., $D^2$), its relative uncertainty is multiplied by that power.</p>
+                            <div class="formula">\\frac{\\Delta V}{V} = \\sqrt{(\\frac{\\Delta L}{L})^2 + (2 \\frac{\\Delta D}{D})^2}</div>
+                            <p>Substitute the calculated relative uncertainties:</p>
+                            <div class="formula">\\frac{\\Delta V}{V} = \\sqrt{(0.00065616)^2 + (2 \\times 0.00080000)^2}</div>
+                            <div class="formula">\\frac{\\Delta V}{V} = \\sqrt{(0.00065616)^2 + (0.00160000)^2}</div>
+                            <div class="formula">\\frac{\\Delta V}{V} = \\sqrt{4.3054 \\times 10^{-7} + 2.56 \\times 10^{-6}}</div>
+                            <div class="formula">\\frac{\\Delta V}{V} = \\sqrt{2.99054 \\times 10^{-6}} \\approx 0.0017293</div>
+                            <p>So, the total relative uncertainty is approximately <strong class="text-blue-600">0.00173</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 4: Calculate the Absolute Uncertainty ($\\Delta V$)</p>
+                            <p>Now, multiply the total relative uncertainty by the nominal volume to get the absolute uncertainty.</p>
+                            <div class="formula">\\Delta V = V \\times (\\frac{\\Delta V}{V}) = 18.713501 \\text{ cm}^3 \\times 0.0017293 \\approx 0.03236 \\text{ cm}^3</div>
+                            <p><strong>Significant Figures for Uncertainty:</strong> The absolute uncertainty should typically be rounded to one significant figure. If the leading digit is 1, it can be rounded to two significant figures. Here, the leading digit is 3, so we round to one significant figure.</p>
+                            <p><strong class="text-blue-600">$\\Delta V \\approx 0.03 \\text{ cm}^3$</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 5: Express the Final Answer with Correct Significant Figures and Uncertainty</p>
+                            <p>The nominal value should be rounded to the same decimal place as the absolute uncertainty. Our uncertainty is to the hundredths place (0.03).</p>
+                            <p>Nominal Volume $V = 18.71 \\text{ cm}^3$</p>
+                            <p>Absolute Uncertainty $\\Delta V = 0.03 \\text{ cm}^3$</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The volume of the cylinder is <strong class="font-bold">$V = (18.71 \\pm 0.03) \\text{ cm}^3$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q2',
+                        title: 'Question 2: Unit Conversion and Implications',
+                        text: 'The speed of light in a vacuum ($c$) is approximately $3.00 \\times 10^8 \\text{ m/s}$.<br>a) Convert this speed to furlongs per fortnight.<br>(Given: $1 \\text{ furlong} = 220 \\text{ yards}$, $1 \\text{ yard} = 0.9144 \\text{ meters}$, $1 \\text{ fortnight} = 14 \\text{ days}$)<br>b) Discuss the practical implications of using such non-standard units for scientific measurements.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">a) Detailed Conversion Calculation:</p>
+                            <p>We need to convert meters to furlongs and seconds to fortnights. We will use a series of conversion factors, ensuring that units cancel out correctly.</p>
+                            <p><strong>Conversion Factors:</strong></p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Length: $1 \\text{ yard} = 0.9144 \\text{ m}$</li>
+                                <li>Length: $1 \\text{ furlong} = 220 \\text{ yards}$</li>
+                                <li>Time: $1 \\text{ minute} = 60 \\text{ s}$</li>
+                                <li>Time: $1 \\text{ hour} = 60 \\text{ minutes} = 3600 \\text{ s}$</li>
+                                <li>Time: $1 \\text{ day} = 24 \\text{ hours}$</li>
+                                <li>Time: $1 \\text{ fortnight} = 14 \\text{ days}$</li>
+                            </ul>
+                            <p>Set up the conversion chain:</p>
+                            <div class="formula">c = (3.00 \\times 10^8 \\frac{\\text{m}}{\\text{s}}) \\times \\left(\\frac{1 \\text{ yard}}{0.9144 \\text{ m}}\\right) \\times \\left(\\frac{1 \\text{ furlong}}{220 \\text{ yards}}\\right) \\times \\left(\\frac{3600 \\text{ s}}{1 \\text{ hr}}\\right) \\times \\left(\\frac{24 \\text{ hr}}{1 \\text{ day}}\\right) \\times \\left(\\frac{14 \\text{ days}}{1 \\text{ fortnight}}\\right)</div>
+                            <p>Now, multiply the numerical values and ensure units cancel:</p>
+                            <div class="formula">c = \\frac{3.00 \\times 10^8 \\times 1 \\times 1 \\times 3600 \\times 24 \\times 14}{0.9144 \\times 220 \\times 1 \\times 1 \\times 1} \\frac{\\text{furlongs}}{\\text{fortnight}}</div>
+                            <div class="formula">c = \\frac{3.00 \\times 10^8 \\times 3600 \\times 24 \\times 14}{0.9144 \\times 220} \\frac{\\text{furlongs}}{\\text{fortnight}}</div>
+                            <div class="formula">c = \\frac{3.00 \\times 10^8 \\times 1,209,600}{201.168} \\frac{\\text{furlongs}}{\\text{fortnight}}</div>
+                            <div class="formula">c = \\frac{3.6288 \\times 10^{14}}{201.168} \\frac{\\text{furlongs}}{\\text{fortnight}}</div>
+                            <div class="formula">c \\approx 1.8038 \\times 10^{12} \\frac{\\text{furlongs}}{\\text{fortnight}}</div>
+                            <p><strong>Significant Figures:</strong> The initial speed of light is given with 3 significant figures ($3.00 \\times 10^8$). All conversion factors are exact or have more significant figures. Therefore, the final answer should be rounded to 3 significant figures.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer (a): The speed of light is approximately <strong class="font-bold">$1.80 \\times 10^{12} \\text{ furlongs/fortnight}$</strong>.</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">b) Practical Implications of Using Non-Standard Units:</p>
+                            <p>Using non-standard or obscure units in scientific measurements has several significant drawbacks:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Global Communication Barriers:</strong> Science is a collaborative and international field. Standardized units, particularly the International System of Units (SI), ensure that scientific findings, data, and equations are universally understood and interpreted without ambiguity. Non-standard units create unnecessary hurdles for communication and data sharing across different research groups, countries, and disciplines.</li>
+                                <li><strong>Increased Risk of Calculation Errors:</strong> As demonstrated in part (a), converting between non-standard units often involves multiple, complex conversion factors. Each step in such a chain introduces an opportunity for arithmetic errors, unit cancellation mistakes, or incorrect application of conversion ratios. This significantly increases the likelihood of inaccurate results.</li>
+                                <li><strong>Loss of Physical Intuition and Scale:</strong> Scientists and engineers develop an intuitive understanding of the magnitudes represented by SI units (e.g., a Newton of force, a Joule of energy, a meter of length). When using unfamiliar units like furlongs or fortnights, this intuitive grasp of scale is lost, making it harder to estimate values, identify errors, or conceptualize the physical phenomena being described.</li>
+                                <li><strong>Inconsistency and Complexity in Formulas:</strong> Fundamental physical constants (e.g., gravitational constant, Planck's constant) and derived physical laws are typically defined and expressed within a coherent system of units (like SI). Introducing non-standard units would necessitate re-deriving or adjusting these constants and formulas, leading to a fragmented and overly complex theoretical framework.</li>
+                                <li><strong>Reduced Reproducibility:</strong> For experiments to be reproducible, all parameters must be clearly and consistently defined. Non-standard units can lead to misinterpretations of experimental setups or results, hindering the ability of other researchers to replicate findings.</li>
+                            </ul>
+                        `
+                    },
+                     {
+                        id: 'q3',
+                        title: 'Question 3: Precision vs. Accuracy with Examples',
+                        text: 'Distinguish clearly between precision and accuracy in scientific measurements. Provide a real-world example from physics where high precision is crucial but accuracy might be challenging to achieve, and another example where high accuracy is paramount.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Definitions:</p>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="font-semibold text-blue-700 mb-2">Accuracy:</p>
+                                    <p>Accuracy refers to how close a measured value (or the average of multiple measurements) is to the true, accepted, or target value of the quantity being measured. It is a measure of correctness. A measurement is accurate if it has a small systematic error (bias).</p>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-blue-700 mb-2">Precision:</p>
+                                    <p>Precision refers to the reproducibility or consistency of a set of measurements. It describes how close multiple measurements of the same quantity are to each other, regardless of their closeness to the true value. High precision implies low random error.</p>
+                                </div>
+                            </div>
+                            <p class="mt-4 text-slate-700">Think of a dartboard: Accurate throws hit near the bullseye. Precise throws land close to each other, but not necessarily near the bullseye.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Example 1: High Precision is Crucial, but Accuracy is Challenging</p>
+                            <p><strong>Scenario: Measuring the Universal Gravitational Constant (G) using a Cavendish Experiment.</strong></p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Why Precision is Crucial:</strong> The gravitational force between laboratory-sized masses is extremely weak. To detect and measure this tiny force, the experimental setup must be incredibly sensitive and stable. Researchers must be able to repeatedly measure the minute twist of a torsion balance with very small variations between measurements. If the measurements are not precise, the signal-to-noise ratio would be too low to extract any meaningful value for G.</li>
+                                <li><strong>Why Accuracy is Challenging:</strong> Despite high precision, achieving high accuracy for G is notoriously difficult. This is due to numerous systematic errors that are hard to eliminate or quantify:
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li>Subtle air currents within the vacuum chamber.</li>
+                                        <li>Seismic vibrations.</li>
+                                        <li>Electrostatic forces between components (even if uncharged).</li>
+                                        <li>Thermal gradients affecting the apparatus.</li>
+                                        <li>Uncertainties in the exact masses and distances of the interacting objects.</li>
+                                    </ul>
+                                    These systematic errors can cause the measured value to consistently deviate from the true value, even if the measurements themselves are tightly clustered (precise). Different laboratories, using slightly different setups, often obtain highly precise but slightly different values for G, highlighting the accuracy challenge.</li>
+                            </ul>
+
+                             <p class="font-semibold mt-4 mb-2">Example 2: High Accuracy is Paramount</p>
+                             <p><strong>Scenario: Calibration of Atomic Clocks for Global Positioning Systems (GPS).</strong></p>
+                             <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Why Accuracy is Paramount:</strong> GPS relies on extremely precise timing signals transmitted from satellites to receivers on Earth. For a GPS receiver to accurately determine its position, it must know the exact time difference between the signals received from multiple satellites. Even a tiny inaccuracy in the satellite's atomic clock (which runs at nanosecond precision) would translate into significant errors in position.
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li>Light travels approximately 30 cm in one nanosecond.</li>
+                                        <li>An inaccuracy of just a few nanoseconds in the satellite's clock would lead to positioning errors of several meters on the ground.</li>
+                                    </ul>
+                                    Therefore, the clocks on GPS satellites must be incredibly accurate, meaning their time measurements must be extremely close to a universal standard time.</li>
+                                <li><strong>Relativistic Corrections for Accuracy:</strong> To achieve this high accuracy, engineers must account for relativistic effects:
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li><strong>Special Relativity:</strong> The satellites move at high speeds relative to Earth, causing their clocks to run slightly slower (time dilation).</li>
+                                        <li><strong>General Relativity:</strong> The satellites are in a weaker gravitational field than on Earth's surface, causing their clocks to run slightly faster.</li>
+                                    </ul>
+                                    These effects, though seemingly small, accumulate rapidly. Without precise and accurate relativistic corrections, the GPS system would quickly become unusable. Here, being correct relative to a universal time standard is the most critical factor.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        id: 'q_new_1',
+                        title: 'Question 4: Density Calculation with Uncertainty',
+                        text: 'A spherical ball has a measured mass $m = (25.5 \\pm 0.1) \\text{ g}$ and a radius $r = (1.20 \\pm 0.02) \\text{ cm}$. Calculate its density ($\\rho = \\frac{m}{V}$, where $V = \\frac{4}{3}\\pi r^3$) and express the result with its absolute uncertainty.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Step 1: Calculate the Nominal Volume (V) of the Sphere</p>
+                            <p>The formula for the volume of a sphere is $V = \\frac{4}{3}\\pi r^3$.</p>
+                            <div class="formula">V = \\frac{4}{3}\\pi (1.20 \\text{ cm})^3</div>
+                            <div class="formula">V = \\frac{4}{3}\\pi (1.728 \\text{ cm}^3)</div>
+                            <div class="formula">V \\approx 7.2382 \\text{ cm}^3</div>
+                            <p><strong>Significant Figures:</strong> The radius has 3 significant figures (1.20 cm). The volume calculation should also be kept to a reasonable number of significant figures for intermediate steps, say 4 or 5. We'll use 7.2382 cm$^3$.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Calculate the Nominal Density ($\\rho$)</p>
+                            <p>The formula for density is $\\rho = \\frac{m}{V}$.</p>
+                            <div class="formula">\\rho = \\frac{25.5 \\text{ g}}{7.2382 \\text{ cm}^3} \\approx 3.5229 \\text{ g/cm}^3</div>
+                            <p><strong>Significant Figures:</strong> Mass has 3 significant figures (25.5 g). Volume (from radius) also effectively contributes 3 significant figures. So the density should be rounded to 3 significant figures.</p>
+                            <p><strong class="text-blue-600">$\\rho \\approx 3.52 \\text{ g/cm}^3$</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Calculate Relative Uncertainties for Mass and Radius</p>
+                            <p>Relative uncertainty for Mass ($\\frac{\\Delta m}{m}$):</p>
+                            <div class="formula">\\frac{\\Delta m}{m} = \\frac{0.1 \\text{ g}}{25.5 \\text{ g}} \\approx 0.003921</div>
+                            <p>Relative uncertainty for Radius ($\\frac{\\Delta r}{r}$):</p>
+                            <div class="formula">\\frac{\\Delta r}{r} = \\frac{0.02 \\text{ cm}}{1.20 \\text{ cm}} \\approx 0.016667</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 4: Calculate Total Relative Uncertainty for Density</p>
+                            <p>For density $\\rho = \\frac{m}{r^3}$, the relative uncertainties add in quadrature. The relative uncertainty of $r^3$ is $3 \\times (\\frac{\\Delta r}{r})$.</p>
+                            <div class="formula">\\frac{\\Delta \\rho}{\\rho} = \\sqrt{(\\frac{\\Delta m}{m})^2 + (3 \\frac{\\Delta r}{r})^2}</div>
+                            <p>Substitute the calculated relative uncertainties:</p>
+                            <div class="formula">\\frac{\\Delta \\rho}{\\rho} = \\sqrt{(0.003921)^2 + (3 \\times 0.016667)^2}</div>
+                            <div class="formula">\\frac{\\Delta \\rho}{\\rho} = \\sqrt{(0.003921)^2 + (0.050001)^2}</div>
+                            <div class="formula">\\frac{\\Delta \\rho}{\\rho} = \\sqrt{1.537 \\times 10^{-5} + 2.500 \\times 10^{-3}}</div>
+                            <div class="formula">\\frac{\\Delta \\rho}{\\rho} = \\sqrt{0.00251537} \\approx 0.05015</div>
+                            <p>So, the total relative uncertainty is approximately <strong class="text-blue-600">0.050</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 5: Calculate the Absolute Uncertainty ($\\Delta \\rho$)</p>
+                            <div class="formula">\\Delta \\rho = \\rho \\times (\\frac{\\Delta \\rho}{\\rho}) = 3.5229 \\text{ g/cm}^3 \\times 0.05015 \\approx 0.1766 \\text{ g/cm}^3</div>
+                            <p><strong>Significant Figures for Uncertainty:</strong> Round to one significant figure.</p>
+                            <p><strong class="text-blue-600">$\\Delta \\rho \\approx 0.2 \\text{ g/cm}^3$</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 6: Express the Final Answer</p>
+                            <p>Round the nominal density to the same decimal place as the absolute uncertainty (one decimal place in this case).</p>
+                            <p>Nominal Density $\\rho = 3.52 \\text{ g/cm}^3 \\approx 3.5 \\text{ g/cm}^3$</p>
+                            <p>Absolute Uncertainty $\\Delta \\rho = 0.2 \\text{ g/cm}^3$</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The density of the spherical ball is <strong class="font-bold">$\\rho = (3.5 \\pm 0.2) \\text{ g/cm}^3$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_1',
+                        title: 'Question 5: Fundamental vs. Derived Units',
+                        text: 'Explain the difference between fundamental (base) and derived units in the International System of Units (SI). Provide two examples of each, clearly stating their SI units.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The International System of Units (SI) is built upon a set of fundamental units from which all other units are derived. This hierarchical structure ensures consistency and coherence in scientific measurements.</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">Fundamental (Base) Units:</p>
+                            <p>Fundamental units are the basic set of independent units that form the foundation of a measurement system. They are chosen such that no one unit can be expressed in terms of the others. There are seven SI base units.</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Example 1: Length</strong>
+                                    <p>The SI base unit for length is the <strong>meter (m)</strong>. It is a fundamental quantity because it cannot be defined by combining other base quantities like mass or time.</p>
+                                </li>
+                                <li><strong>Example 2: Mass</strong>
+                                    <p>The SI base unit for mass is the <strong>kilogram (kg)</strong>. It is a fundamental quantity, independent of length or time.</p>
+                                </li>
+                                <li><strong>Other SI Base Units:</strong> second (time), Ampere (electric current), Kelvin (thermodynamic temperature), mole (amount of substance), candela (luminous intensity).</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Derived Units:</p>
+                            <p>Derived units are units that are formed by combining fundamental units through multiplication, division, or both. They represent quantities that are defined in terms of the base quantities.</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Example 1: Velocity</strong>
+                                    <p>Velocity is defined as displacement per unit time. Its SI unit is <strong>meters per second (m/s)</strong>. This unit is derived from the fundamental units of length (meter) and time (second).</p>
+                                    <div class="formula">\\text{Velocity} = \\frac{\\text{Length}}{\\text{Time}} \\implies \\text{Unit} = \\frac{\\text{m}}{\\text{s}}</div>
+                                </li>
+                                <li><strong>Example 2: Force</strong>
+                                    <p>Force is defined by Newton's second law as mass times acceleration ($F = ma$). Its SI unit is the <strong>Newton (N)</strong>. A Newton is a derived unit, equivalent to kilogram-meter per second squared (kg$\\cdot$m/s$^2$).</p>
+                                    <div class="formula">\\text{Force} = \\text{Mass} \\times \\text{Acceleration} \\implies \\text{Unit} = \\text{kg} \\cdot \\frac{\\text{m}}{\\text{s}^2} = \\text{N}</div>
+                                </li>
+                                <li><strong>Other Derived Units:</strong> Joule (energy), Watt (power), Pascal (pressure), Hertz (frequency), Volt (electric potential).</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Key takeaway: Fundamental units are independent building blocks, while derived units are constructed from these blocks to describe more complex physical quantities.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_2',
+                        title: 'Question 6: Role of Significant Figures',
+                        text: 'What is the purpose of using significant figures in scientific measurements and calculations? Discuss how they reflect the precision of a measurement and provide an example where incorrect application of significant figures could lead to misleading conclusions.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>Significant figures (or significant digits) are crucial in scientific measurements and calculations because they convey the precision with which a measurement was made and avoid implying a greater precision than actually exists.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Purpose of Significant Figures:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Indicate Precision:</strong> Significant figures communicate the reliability and precision of a measurement. The more significant figures a measurement has, the more precisely it is considered to be known. For example, a measurement of 5.2 cm implies less precision than 5.23 cm. The last significant digit is understood to be estimated or uncertain.</li>
+                                <li><strong>Avoid Misleading Information:</strong> When performing calculations with measured values, the result cannot be more precise than the least precise measurement used in the calculation. Significant figures ensure that the calculated answer does not falsely suggest a higher level of precision than the input data allows.</li>
+                                <li><strong>Standardization:</strong> They provide a standardized way for scientists to report data and results, ensuring that the uncertainty inherent in measurements is properly conveyed.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">How they reflect precision:</p>
+                            <p>The number of significant figures directly relates to the precision of the measuring instrument used. For instance:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li>If a ruler can measure to the nearest millimeter, a measurement might be 12.5 cm (3 significant figures, precision to 0.1 cm).</li>
+                                <li>If a Vernier caliper can measure to the nearest 0.01 cm, a measurement might be 12.53 cm (4 significant figures, precision to 0.01 cm).</li>
+                            </ul>
+                            <p>The last digit in a significant figure is considered uncertain, reflecting the limits of the measurement.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Example of Misleading Conclusions:</p>
+                            <p>Imagine you measure the length of a room as $10.2 \\text{ m}$ (precision to 0.1 m, 3 significant figures) and its width as $5.1 \\text{ m}$ (precision to 0.1 m, 2 significant figures).</p>
+                            <p>If you calculate the area without considering significant figures, your calculator might give you:</p>
+                            <div class="formula">Area = 10.2 \\text{ m} \\times 5.1 \\text{ m} = 52.02 \\text{ m}^2</div>
+                            <p>If you report this as $52.02 \\text{ m}^2$, you are implying that you know the area to the nearest 0.01 m$^2$. However, your least precise measurement (width) only has 2 significant figures. The rule for multiplication/division states that the result should have no more significant figures than the measurement with the fewest significant figures.</p>
+                            <p>The correct area, respecting significant figures, should be rounded to 2 significant figures:</p>
+                            <div class="formula">Area = 52 \\text{ m}^2</div>
+                            <p><strong>Misleading Conclusion:</strong> Reporting $52.02 \\text{ m}^2$ would be misleading because it suggests a precision that was not achieved in the original measurements. It implies that you are confident about the area down to the centimeter level, when your initial measurements were only reliable to the decimeter level. This could lead to overconfidence in experimental results or incorrect design specifications in engineering applications.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Significant figures are essential for accurately representing the certainty of scientific data, preventing overstatement of precision and ensuring reliable conclusions.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_3',
+                        title: 'Question 7: Types of Experimental Errors',
+                        text: 'Differentiate between random errors and systematic errors in experimental measurements. For each type, provide a specific example from a physics experiment and suggest a method to minimize its impact.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>Understanding the types of errors is crucial for designing experiments, analyzing data, and reporting reliable results in physics.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Random Errors:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> Random errors are unpredictable, fluctuate from one measurement to the next, and cause measured values to deviate from the true value in an inconsistent way. They are often due to uncontrollable factors or limitations in the precision of the measuring instrument.</li>
+                                <li><strong>Characteristics:</strong> They affect precision. They can cause measurements to be either higher or lower than the true value. They cannot be eliminated but can be reduced by taking multiple measurements.</li>
+                                <li><strong>Example: Measuring the period of a simple pendulum with a stopwatch.</strong>
+                                    <p>When timing a pendulum swing, the reaction time of the person starting and stopping the stopwatch will vary slightly with each trial. Sometimes you might start too early, sometimes too late; sometimes stop too early, sometimes too late. These small, unpredictable variations lead to random errors in the measured period.</p>
+                                </li>
+                                <li><strong>Method to Minimize Impact:</strong>
+                                    <p>To minimize the impact of random errors, one should take <strong>multiple measurements</strong> of the same quantity and calculate their average. Random errors tend to cancel each other out over many trials, leading to an average value that is closer to the true value. For the pendulum, taking 10 or 20 swings and dividing the total time by the number of swings, and repeating this process multiple times, significantly reduces the effect of reaction time variability.</p>
+                                </li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Systematic Errors:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> Systematic errors are consistent, repeatable errors that cause measured values to deviate from the true value in a predictable direction (always too high or always too low). They are often due to faulty equipment, incorrect calibration, or flaws in the experimental design or procedure.</li>
+                                <li><strong>Characteristics:</strong> They affect accuracy. They cause a consistent bias in all measurements. They cannot be reduced by taking multiple measurements; they must be identified and corrected.</li>
+                                <li><strong>Example: Measuring length with a miscalibrated ruler.</strong>
+                                    <p>If a ruler is manufactured incorrectly and its first centimeter mark is actually 0.9 cm from the end, every measurement taken with that ruler will consistently be 0.1 cm longer than the true value. This is a systematic error because it's consistently in one direction.</p>
+                                </li>
+                                <li><strong>Method to Minimize Impact:</strong>
+                                    <p>To minimize the impact of systematic errors, one must <strong>identify and correct the source of the error</strong>. This involves:
+                                        <ul class="list-circle list-inside ml-4">
+                                            <li><strong>Calibration:</strong> Calibrating instruments against known standards (e.g., checking the ruler against a known standard length).</li>
+                                            <li><strong>Zero Correction:</strong> Checking for and correcting zero errors (e.g., ensuring a balance reads zero when nothing is on it).</li>
+                                            <li><strong>Improved Experimental Design:</strong> Modifying the experimental setup or procedure to eliminate biases (e.g., accounting for air resistance in free-fall experiments).</li>
+                                            <li><strong>Using Different Methods/Instruments:</strong> Comparing results obtained using different methods or instruments to identify consistent discrepancies.</li>
+                                        </ul>
+                                    For the miscalibrated ruler, the method would be to apply a correction factor to all measurements or to use a correctly calibrated ruler.</p>
+                                </li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Understanding and addressing both random and systematic errors is fundamental to obtaining reliable and valid scientific results.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_4',
+                        title: 'Question 8: Importance of Units in Equations',
+                        text: 'Explain why it is critical for all terms in a physical equation to have consistent units. What principle does this relate to, and what are the consequences if this principle is violated?',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The consistency of units within a physical equation is not merely a convention; it is a fundamental requirement rooted in the nature of physical quantities and their mathematical relationships.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>The principle that all terms in a physical equation must have consistent units is known as the <strong>Principle of Dimensional Homogeneity</strong>. This principle states that:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li>Every term in an equation must have the same overall dimensions.</li>
+                                <li>Only quantities with the same dimensions can be added to or subtracted from each other.</li>
+                                <li>The arguments of transcendental functions (like trigonometric functions, logarithms, and exponentials) must be dimensionless.</li>
+                            </ul>
+                            <p>For example, in the equation $v = v_0 + at$, where $v$ is final velocity, $v_0$ is initial velocity, $a$ is acceleration, and $t$ is time:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Dimension of $v$: $[LT^{-1}]$</li>
+                                <li>Dimension of $v_0$: $[LT^{-1}]$</li>
+                                <li>Dimension of $at$: $[LT^{-2}] \\cdot [T] = [LT^{-1}]$</li>
+                            </ul>
+                            <p>All terms have the dimension of velocity, $[LT^{-1}]$, confirming dimensional homogeneity.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Why it is Critical (Consequences of Violation):</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Physical Meaninglessness:</strong> If terms in an equation have different units, the equation becomes physically meaningless. For instance, you cannot meaningfully add a length (e.g., 5 meters) to a mass (e.g., 2 kilograms). The result would have no physical interpretation. This is akin to trying to add apples and oranges.</li>
+                                <li><strong>Incorrect Results:</strong> Any calculation performed with a dimensionally inconsistent equation will yield incorrect results. Even if the numerical values seem plausible, the underlying physical relationship described by the equation is fundamentally flawed.</li>
+                                <li><strong>Inability to Validate Equations:</strong> Dimensional analysis (checking for dimensional homogeneity) is a powerful tool for quickly verifying the correctness of a derived formula or for identifying potential errors. If an equation violates this principle, it immediately signals a mistake in derivation or understanding.</li>
+                                <li><strong>Breakdown of Predictive Power:</strong> Physics equations are used to predict outcomes and describe natural phenomena. If they are not dimensionally consistent, their predictive power is lost, and they cannot accurately model reality.</li>
+                                <li><strong>Confusion and Miscommunication:</strong> Inconsistent units lead to confusion among scientists and engineers, hindering collaboration and the advancement of knowledge. Standardized and consistent units are essential for clear communication of scientific findings.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">In essence, dimensional homogeneity is a fundamental sanity check for any physical equation, ensuring it makes logical sense in the physical world.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_5',
+                        title: 'Question 9: SI Base Units and Their Definitions',
+                        text: 'List the seven SI base units and briefly explain what each measures. Why are these specific units chosen as "base" units?',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The International System of Units (SI) is founded on seven base units, each representing a fundamental physical quantity. These units are chosen because they are independent of each other and can be used to define all other derived units.</p>
+
+                            <p class="font-semibold mt-4 mb-2">The Seven SI Base Units:</p>
+                            <ol class="list-decimal list-inside space-y-3">
+                                <li><strong>Meter (m): Unit of Length</strong>
+                                    <p>Measures: Distance or spatial extent.</p>
+                                    <p>Definition: Defined as the length of the path travelled by light in vacuum during a time interval of $1/299,792,458$ of a second. This definition links length to the fundamental constant, the speed of light.</p>
+                                </li>
+                                <li><strong>Kilogram (kg): Unit of Mass</strong>
+                                    <p>Measures: The amount of matter in an object, or its inertia (resistance to acceleration).</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the Planck constant $h$ to be $6.62607015 \\times 10^{-34}$ when expressed in the unit J$\\cdot$s, which is equal to kg$\\cdot$m$^2$\\cdot$s$^{-1}$, where the meter and the second are defined in terms of $c$ and $\\Delta \\nu_{Cs}$. This definition links mass to quantum mechanics.</p>
+                                </li>
+                                <li><strong>Second (s): Unit of Time</strong>
+                                    <p>Measures: Duration or interval between events.</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the cesium frequency $\\Delta \\nu_{Cs}$ (the unperturbed ground-state hyperfine transition frequency of the cesium-133 atom) to be $9,192,631,770$ when expressed in the unit Hz, which is equal to s$^{-1}$. This definition links time to atomic transitions.</p>
+                                </li>
+                                <li><strong>Ampere (A): Unit of Electric Current</strong>
+                                    <p>Measures: The rate of flow of electric charge.</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the elementary charge $e$ to be $1.602176634 \\times 10^{-19}$ when expressed in the unit C, which is equal to A$\\cdot$s, where the second is defined in terms of $\\Delta \\nu_{Cs}$. This definition links current to the charge of a single electron.</p>
+                                </li>
+                                <li><strong>Kelvin (K): Unit of Thermodynamic Temperature</strong>
+                                    <p>Measures: The average kinetic energy of the particles in a substance, indicating its hotness or coldness.</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the Boltzmann constant $k$ to be $1.380649 \\times 10^{-23}$ when expressed in the unit J$\\cdot$K$^{-1}$, which is equal to kg$\\cdot$m$^2$\\cdot$s$^{-2}\\cdot$K$^{-1}$. This definition links temperature to the energy per unit temperature.</p>
+                                </li>
+                                <li><strong>Mole (mol): Unit of Amount of Substance</strong>
+                                    <p>Measures: The quantity of elementary entities (atoms, molecules, ions, etc.) in a sample.</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the Avogadro constant $N_A$ to be $6.02214076 \\times 10^{23}$ when expressed in the unit mol$^{-1}$. This definition links the amount of substance to a specific number of particles.</p>
+                                </li>
+                                <li><strong>Candela (cd): Unit of Luminous Intensity</strong>
+                                    <p>Measures: The power emitted by a light source in a particular direction, per unit solid angle, weighted by the human eye's sensitivity to different wavelengths.</p>
+                                    <p>Definition: Defined by taking the fixed numerical value of the luminous efficacy of monochromatic radiation of frequency $540 \\times 10^{12}$ Hz, $K_{cd}$, to be $683$ when expressed in the unit lm$\\cdot$W$^{-1}$, which is equal to cd$\\cdot$sr$\\cdot$W$^{-1}$, or cd$\\cdot$sr$\\cdot$kg$^{-1}\\cdot$m$^{-2}\\cdot$s$^3$. This definition links luminous intensity to light power and human perception.</p>
+                                </li>
+                            </ol>
+                            <p class="font-semibold mt-4 mb-2">Why these units are chosen as "base" units:</p>
+                            <p>These specific units are chosen as base units because they represent fundamental physical quantities that are considered to be independent of each other. They form the smallest set of quantities from which all other physical quantities (and their units) can be derived. Their definitions are based on fundamental physical constants, ensuring that they are stable, universally reproducible, and not dependent on arbitrary physical artifacts (like the old kilogram prototype).</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">These seven base units provide a coherent and robust framework for all scientific and technological measurements worldwide.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_1_6',
+                        title: 'Question 10: Precision of Measuring Instruments',
+                        text: 'A student uses three different instruments to measure the length of a table: a meter stick, a measuring tape, and a laser distance meter. Describe how the precision of the measurement would likely differ for each instrument and explain what factors contribute to these differences.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The precision of a measurement is largely determined by the measuring instrument used and its inherent limitations. Let's analyze the precision expected from a meter stick, a measuring tape, and a laser distance meter when measuring the length of a table.</p>
+
+                            <p class="font-semibold mt-4 mb-2">1. Meter Stick:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Typical Precision:</strong> A standard meter stick usually has markings down to millimeters (mm). Therefore, measurements can typically be estimated to the nearest half-millimeter or millimeter. For a 1-meter stick, you might get a reading like $0.953 \\pm 0.001 \\text{ m}$ or $95.3 \\pm 0.1 \\text{ cm}$.</li>
+                                <li><strong>Factors Contributing to Precision:</strong>
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li><strong>Smallest Division:</strong> The smallest marked division on the stick (usually 1 mm).</li>
+                                        <li><strong>Human Estimation:</strong> The ability of the user to estimate between the smallest markings.</li>
+                                        <li><strong>Parallax Error:</strong> The apparent shift in an object's position when viewed from different angles, which can occur if the eye is not directly perpendicular to the mark being read.</li>
+                                        <li><strong>Alignment:</strong> Difficulty in perfectly aligning the start and end of the stick with the table's edges.</li>
+                                    </ul>
+                                <li><strong>Overall:</strong> Relatively low precision compared to other instruments for longer lengths, but good for short, direct measurements.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">2. Measuring Tape:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Typical Precision:</strong> Similar to a meter stick, measuring tapes often have millimeter markings. However, for longer lengths (e.g., 5 meters or more), the precision can be slightly lower due to factors like stretching, bending, or sagging of the tape. You might get a reading like $0.952 \\pm 0.002 \\text{ m}$ or $95.2 \\pm 0.2 \\text{ cm}$.</li>
+                                <li><strong>Factors Contributing to Precision:</strong>
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li><strong>Smallest Division:</strong> Usually 1 mm.</li>
+                                        <li><strong>Flexibility/Sag:</strong> Fabric or thin metal tapes can stretch or sag, especially over longer distances, introducing variability.</li>
+                                        <li><strong>Temperature Effects:</strong> Metal tapes can expand/contract with temperature changes.</li>
+                                        <li><strong>Tension:</strong> The amount of tension applied when pulling the tape can affect its effective length.</li>
+                                        <li><strong>Alignment:</strong> Ensuring the tape is perfectly straight and aligned along the measured length.</li>
+                                    </ul>
+                                <li><strong>Overall:</strong> Moderate precision. Good for longer distances where a meter stick is impractical, but less precise than rigid or electronic methods.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">3. Laser Distance Meter:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Typical Precision:</strong> These devices work by emitting a laser pulse and measuring the time it takes to reflect off a target and return. They can offer very high precision, often to within a few millimeters or even fractions of a millimeter, regardless of the distance (within its range). You might get a reading like $0.9526 \\pm 0.0005 \\text{ m}$ or $95.26 \\pm 0.05 \\text{ cm}$.</li>
+                                <li><strong>Factors Contributing to Precision:</strong>
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li><strong>Time-of-Flight Measurement:</strong> The accuracy of the internal clock measuring the laser's travel time.</li>
+                                        <li><strong>Laser Beam Divergence:</strong> How focused the laser beam is, affecting the precision of the target point.</li>
+                                        <li><strong>Surface Properties:</strong> The reflectivity of the target surface can affect the measurement.</li>
+                                        <li><strong>Environmental Factors:</strong> Air temperature, humidity, and pressure can slightly affect the speed of light, though modern devices often compensate for this.</li>
+                                        <li><strong>User Stability:</strong> Holding the device steady during measurement.</li>
+                                    </ul>
+                                <li><strong>Overall:</strong> High precision. Excellent for both short and long distances, minimizing human error in reading and alignment.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">In summary, the laser distance meter would provide the highest precision, followed by the measuring tape, and then the meter stick, primarily due to their underlying measurement principles and susceptibility to human and environmental factors.</p>
+                        `
+                    }
+                ]
+            },
+            section2: {
+                title: "Dimensions",
+                intro: "Dimensional analysis is a powerful tool for checking the validity of equations and deriving relationships between physical quantities. This section assesses your ability to determine the dimensions of constants and use them to construct physical laws.",
+                questions: [
+                    {
+                        id: 'q4',
+                        title: 'Question 11: Dimensional Analysis of Damped Oscillation',
+                        text: 'The equation for the displacement ($x$) of a particle undergoing damped simple harmonic motion is given by:<br>$x(t) = A e^{-bt} \\cos(\\omega t + \\phi)$<br>where $t$ is time, $A$ is amplitude, $\\omega$ is angular frequency, and $\\phi$ is a phase constant. Using dimensional analysis, determine the dimensions of the constant $b$.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>The core principle of dimensional analysis states that for any physical equation to be valid, the dimensions on both sides of the equation must be identical. Furthermore, arguments of transcendental functions (like exponential, logarithmic, trigonometric functions) must be dimensionless.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Analyze the Exponential Term</p>
+                            <p>In the given equation, $x(t) = A e^{-bt} \\cos(\\omega t + \\phi)$, the term $e^{-bt}$ is an exponential function. For the exponential function $e^Y$ to be mathematically meaningful in a physical equation, its exponent $Y$ must be a dimensionless quantity. This means the product $bt$ must have no dimensions.</p>
+                            <div class="formula">[b][t] = \\text{Dimensionless} = M^0 L^0 T^0</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Determine the Dimension of Time (t)</p>
+                            <p>Time ($t$) is a fundamental physical quantity, and its dimension is simply $T$.</p>
+                            <div class="formula">[t] = T</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Solve for the Dimension of Constant b</p>
+                            <p>Substitute the dimension of $t$ into the equation from Step 1:</p>
+                            <div class="formula">[b] \\cdot T = M^0 L^0 T^0</div>
+                            <p>To isolate the dimension of $b$, divide both sides by $T$:</p>
+                            <div class="formula">[b] = \\frac{M^0 L^0 T^0}{T} = T^{-1}</div>
+                            <p>This means that the constant $b$ has the dimensions of inverse time.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Physical Interpretation:</p>
+                            <p>A quantity with dimensions of $T^{-1}$ is a frequency. In damped oscillations, $b$ is often related to the damping coefficient, which determines how quickly the amplitude of oscillations decays over time. A larger $b$ means faster decay, which is consistent with it having units of frequency (e.g., s$^{-1}$).</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The dimensions of the constant $b$ are <strong class="font-bold">$T^{-1}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q5',
+                        title: 'Question 12: Dimensional Analysis of Simple Pendulum Period',
+                        text: 'The period ($T$) of a simple pendulum depends on its length ($L$), the mass of the bob ($m$), and the acceleration due to gravity ($g$). Assume the relationship is of the form $T = k L^a m^b g^c$, where $k$ is a dimensionless constant. Using dimensional analysis, determine the values of $a$, $b$, and $c$.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>For the equation $T = k L^a m^b g^c$ to be dimensionally consistent, the dimensions on the left-hand side (LHS) must be equal to the dimensions on the right-hand side (RHS).</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Write Down the Dimensions of Each Quantity</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Period ($T$): This is a measure of time. Dimension: $[T] = T^1$ (or $M^0 L^0 T^1$).</li>
+                                <li>Length ($L$): This is a fundamental length. Dimension: $[L] = L^1$ (or $M^0 L^1 T^0$).</li>
+                                <li>Mass ($m$): This is a fundamental mass. Dimension: $[m] = M^1$ (or $M^1 L^0 T^0$).</li>
+                                <li>Acceleration due to gravity ($g$): Acceleration is the rate of change of velocity. Dimension: $[g] = [LT^{-2}]$ (or $M^0 L^1 T^{-2}$).</li>
+                                <li>Constant ($k$): Given as dimensionless. Dimension: $[k] = M^0 L^0 T^0$.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Substitute Dimensions into the Assumed Relationship</p>
+                            <p>Substitute the dimensions into the equation $T = k L^a m^b g^c$:</p>
+                            <div class="formula">M^0 L^0 T^1 = (M^0 L^0 T^0) \\cdot (L^1)^a \\cdot (M^1)^b \\cdot (L^1 T^{-2})^c</div>
+                            <p>Simplify the RHS by combining powers of $M$, $L$, and $T$:</p>
+                            <div class="formula">M^0 L^0 T^1 = M^{0+b+0} L^{a+c} T^{0-2c}</div>
+                            <div class="formula">M^0 L^0 T^1 = M^b L^{a+c} T^{-2c}</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Equate Exponents for Each Fundamental Dimension</p>
+                            <p>For the equation to be dimensionally consistent, the exponents of $M$, $L$, and $T$ on both sides must be equal.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li><strong>For Mass (M):</strong> Equating exponents of $M$:
+                                    <div class="formula">0 = b</div>
+                                    This tells us that the period of a simple pendulum does not depend on the mass of the bob.</li>
+                                <li><strong>For Time (T):</strong> Equating exponents of $T$:
+                                    <div class="formula">1 = -2c</div>
+                                    Solving for $c$:
+                                    <div class="formula">c = -\\frac{1}{2}</div></li>
+                                <li><strong>For Length (L):</strong> Equating exponents of $L$:
+                                    <div class="formula">0 = a + c</div>
+                                    Substitute the value of $c$ we just found:
+                                    <div class="formula">0 = a - \\frac{1}{2}</div>
+                                    Solving for $a$:
+                                    <div class="formula">a = \\frac{1}{2}</div></li>
+                            </ul>
+                            
+                            <p class="font-semibold mt-4 mb-2">Step 4: Write the Final Relationship</p>
+                            <p>Substitute the determined values of $a$, $b$, and $c$ back into the original assumed relationship:</p>
+                            <div class="formula">T = k L^{1/2} m^0 g^{-1/2}</div>
+                            <div class="formula">T = k \\sqrt{L} \\cdot 1 \\cdot \\frac{1}{\\sqrt{g}}</div>
+                            <div class="formula">T = k \\sqrt{\\frac{L}{g}}</div>
+                            <p>This result is consistent with the known formula for the period of a simple pendulum, $T = 2\\pi \\sqrt{\\frac{L}{g}}$, where $k = 2\\pi$ (a dimensionless constant).</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The values are <strong class="font-bold">$a = 1/2$, $b = 0$, and $c = -1/2$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q6',
+                        title: "Question 13: Planck's Constants and Planck Length",
+                        text: 'Consider the universal gravitational constant ($G$) and Planck\'s constant ($h$).<br>a) Determine the dimensions of $G$ from Newton\'s Law of Universal Gravitation ($F = G \\frac{m_1 m_2}{r^2}$).<br>b) Determine the dimensions of $h$ from the energy of a photon ($E = hf$), where $f$ is frequency.<br>c) Propose a combination of $G$, $h$, and $c$ (speed of light) that would yield a quantity with dimensions of length (known as the Planck length). You do not need to find the numerical constant.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">a) Dimensions of Universal Gravitational Constant (G):</p>
+                            <p>Newton's Law of Universal Gravitation is $F = G \\frac{m_1 m_2}{r^2}$.</p>
+                            <p>Rearrange the formula to solve for $G$:</p>
+                            <div class="formula">G = \\frac{F r^2}{m_1 m_2}</div>
+                            <p>Now, substitute the dimensions of each quantity:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Force ($F$): $[F] = MLT^{-2}$ (from $F=ma$)</li>
+                                <li>Distance ($r$): $[r] = L$</li>
+                                <li>Mass ($m_1, m_2$): $[m] = M$</li>
+                            </ul>
+                            <p>Substitute these into the dimensional equation for $G$:</p>
+                            <div class="formula">[G] = \\frac{(MLT^{-2})(L^2)}{M \\cdot M}</div>
+                            <p>Simplify the expression:</p>
+                            <div class="formula">[G] = \\frac{ML^3T^{-2}}{M^2} = M^{1-2} L^3 T^{-2} = M^{-1}L^3T^{-2}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Dimensions of G: <strong class="font-bold">$M^{-1}L^3T^{-2}$</strong>.</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">b) Dimensions of Planck's Constant (h):</p>
+                            <p>The energy of a photon is given by $E = hf$, where $f$ is frequency.</p>
+                            <p>Rearrange the formula to solve for $h$:</p>
+                            <div class="formula">h = \\frac{E}{f}</div>
+                            <p>Now, substitute the dimensions of each quantity:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Energy ($E$): $[E] = ML^2T^{-2}$ (from $E = \\frac{1}{2}mv^2$ or $W=Fd$)</li>
+                                <li>Frequency ($f$): $[f] = T^{-1}$ (since frequency is $1/\\text{period}$)</li>
+                            </ul>
+                            <p>Substitute these into the dimensional equation for $h$:</p>
+                            <div class="formula">[h] = \\frac{ML^2T^{-2}}{T^{-1}}</div>
+                            <p>Simplify the expression:</p>
+                            <div class="formula">[h] = ML^2 T^{-2 - (-1)} = ML^2T^{-1}</div>
+                             <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Dimensions of h: <strong class="font-bold">$ML^2T^{-1}$</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">c) Combination for Planck Length ($L_P$):</p>
+                            <p>The Planck length is a fundamental unit of length derived from universal constants. We assume it can be expressed as a product of powers of $G$, $h$, and $c$ (speed of light):</p>
+                            <div class="formula">L_P \\propto G^a h^b c^d</div>
+                            <p>We want the dimension of $L_P$ to be length, i.e., $[L_P] = L^1$.</p>
+                            <p>First, list the dimensions of all involved constants:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>$[G] = M^{-1}L^3T^{-2}$ (from part a)</li>
+                                <li>$[h] = ML^2T^{-1}$ (from part b)</li>
+                                <li>$[c] = LT^{-1}$ (speed is distance over time)</li>
+                            </ul>
+                            <p>Now, substitute these into the dimensional equation for $L_P$:</p>
+                            <div class="formula">L^1 = (M^{-1}L^3T^{-2})^a (ML^2T^{-1})^b (LT^{-1})^d</div>
+                            <p>Combine the exponents for each fundamental dimension ($M$, $L$, $T$):</p>
+                            <div class="formula">M^0 L^1 T^0 = M^{-a+b} L^{3a+2b+d} T^{-2a-b-d}</div>
+                            <p>Equate the exponents on both sides of the equation:</p>
+                             <ul class="list-disc list-inside space-y-1">
+                                <li><strong>For Mass (M):</strong> $0 = -a + b \\implies a = b$ (Equation 1)</li>
+                                <li><strong>For Time (T):</strong> $0 = -2a - b - d$ (Equation 2)</li>
+                                <li><strong>For Length (L):</strong> $1 = 3a + 2b + d$ (Equation 3)</li>
+                            </ul>
+                            <p>Now, solve the system of equations:</p>
+                            <p>From Equation 1, substitute $b=a$ into Equation 2:</p>
+                            <div class="formula">0 = -2a - a - d \\implies 0 = -3a - d \\implies d = -3a</div>
+                            <p>Now substitute $b=a$ and $d=-3a$ into Equation 3:</p>
+                            <div class="formula">1 = 3a + 2a + (-3a)</div>
+                            <div class="formula">1 = 5a - 3a</div>
+                            <div class="formula">1 = 2a</div>
+                            <div class="formula">a = \\frac{1}{2}</div>
+                            <p>Now find $b$ and $d$ using $a = 1/2$:</p>
+                            <div class="formula">b = a = \\frac{1}{2}</div>
+                            <div class="formula">d = -3a = -3(\\frac{1}{2}) = -\\frac{3}{2}</div>
+                            <p>So, the exponents are $a = 1/2$, $b = 1/2$, and $d = -3/2$.</p>
+                            <p>Substitute these back into the assumed proportionality:</p>
+                            <div class="formula">L_P \\propto G^{1/2} h^{1/2} c^{-3/2}</div>
+                            <div class="formula">L_P \\propto \\sqrt{G} \\sqrt{h} \\frac{1}{c^{3/2}}</div>
+                            <div class="formula">L_P \\propto \\sqrt{\\frac{Gh}{c^3}}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The combination of constants that yields a quantity with dimensions of length (Planck length) is proportional to <strong class="font-bold">$\\sqrt{\\frac{Gh}{c^3}}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_new_2',
+                        title: 'Question 14: Dimensional Analysis of Wave Speed on a String',
+                        text: 'The speed ($v$) of a transverse wave on a stretched string depends on the tension ($T_{tension}$) in the string and its linear mass density (mass per unit length, $\\mu$). Using dimensional analysis, derive a formula for the wave speed, assuming it is of the form $v = k T_{tension}^a \\mu^b$, where $k$ is a dimensionless constant.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>The dimensions on both sides of the equation $v = k T_{tension}^a \\mu^b$ must be consistent.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Write Down the Dimensions of Each Quantity</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Speed ($v$): Dimension: $[v] = LT^{-1}$.</li>
+                                <li>Tension ($T_{tension}$): Tension is a force. Dimension: $[T_{tension}] = MLT^{-2}$.</li>
+                                <li>Linear Mass Density ($\\mu$): Mass per unit length. Dimension: $[\\mu] = ML^{-1}$.</li>
+                                <li>Constant ($k$): Given as dimensionless. Dimension: $[k] = M^0 L^0 T^0$.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Substitute Dimensions into the Assumed Relationship</p>
+                            <p>Substitute the dimensions into the equation $v = k T_{tension}^a \\mu^b$:</p>
+                            <div class="formula">M^0 L^1 T^{-1} = (MLT^{-2})^a (ML^{-1})^b</div>
+                            <p>Simplify the RHS by combining powers of $M$, $L$, and $T$:</p>
+                            <div class="formula">M^0 L^1 T^{-1} = M^{a+b} L^{a-b} T^{-2a}</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Equate Exponents for Each Fundamental Dimension</p>
+                            <p>Equate the exponents on both sides for $M$, $L$, and $T$:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li><strong>For Mass (M):</strong>
+                                    <div class="formula">0 = a + b</div>
+                                    <div class="formula">b = -a</div> (Equation 1)</li>
+                                <li><strong>For Time (T):</strong>
+                                    <div class="formula">-1 = -2a</div>
+                                    <div class="formula">a = \\frac{1}{2}</div> (Equation 2)</li>
+                                <li><strong>For Length (L):</strong>
+                                    <div class="formula">1 = a - b</div> (Equation 3)</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 4: Solve the System of Equations</p>
+                            <p>From Equation 2, we directly find $a = 1/2$.</p>
+                            <p>Substitute $a = 1/2$ into Equation 1 to find $b$:</p>
+                            <div class="formula">b = -a = -\\frac{1}{2}</div>
+                            <p>Let's check these values with Equation 3:</p>
+                            <div class="formula">1 = a - b = \\frac{1}{2} - (-\\frac{1}{2}) = \\frac{1}{2} + \\frac{1}{2} = 1</div>
+                            <p>The values are consistent.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 5: Write the Final Formula</p>
+                            <p>Substitute the determined values of $a$ and $b$ back into the original assumed relationship:</p>
+                            <div class="formula">v = k T_{tension}^{1/2} \\mu^{-1/2}</div>
+                            <div class="formula">v = k \\sqrt{T_{tension}} \\frac{1}{\\sqrt{\\mu}}</div>
+                            <div class="formula">v = k \\sqrt{\\frac{T_{tension}}{\\mu}}</div>
+                            <p>This is the dimensionally correct formula for the speed of a transverse wave on a string. The dimensionless constant $k$ is actually 1 in this case, meaning $v = \\sqrt{\\frac{T_{tension}}{\\mu}}$.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The derived formula for wave speed is <strong class="font-bold">$v = k \\sqrt{\\frac{T_{tension}}{\\mu}}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_2_1',
+                        title: 'Question 15: Limitations of Dimensional Analysis',
+                        text: 'While powerful, dimensional analysis has limitations. Describe at least three significant limitations of dimensional analysis in deriving or verifying physical equations.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>Dimensional analysis is an invaluable tool in physics, but it is not a panacea for deriving all physical laws. It has inherent limitations that must be understood.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Limitations of Dimensional Analysis:</p>
+                            <ol class="list-decimal list-inside space-y-3">
+                                <li><strong>Cannot Determine Dimensionless Constants:</strong>
+                                    <p>Dimensional analysis can only determine the relationship between quantities up to a dimensionless constant. For example, it can show that the period of a simple pendulum is proportional to $\\sqrt{L/g}$, but it cannot determine the constant $2\\pi$ in the formula $T = 2\\pi \\sqrt{L/g}$. These constants must be found through theoretical derivation (e.g., solving differential equations) or experimental measurement.</p>
+                                </li>
+                                <li><strong>Cannot Deal with Sums or Differences of Quantities with Different Functional Forms:</strong>
+                                    <p>Dimensional analysis relies on the principle of dimensional homogeneity, which means all terms added or subtracted must have the same dimensions. It cannot derive equations that involve sums or differences of terms with different dimensional dependencies. For instance, it cannot derive an equation like $x = v_0 t + \\frac{1}{2}at^2$ because it cannot determine the coefficients like $1/2$ or distinguish between $v_0 t$ and $at^2$ if they were independent terms (though they have the same dimensions, their functional dependence on time is different).</p>
+                                </li>
+                                <li><strong>Requires Prior Knowledge of Relevant Variables:</strong>
+                                    <p>To use dimensional analysis effectively, one must already know or correctly guess all the physical quantities that influence the phenomenon in question. If a crucial variable is omitted from the analysis, the resulting dimensional formula will be incorrect or incomplete. For example, if you tried to derive the period of a pendulum without including gravity, you would fail.</p>
+                                </li>
+                                <li><strong>Limited by the Number of Base Dimensions:</strong>
+                                    <p>The number of independent fundamental quantities (like M, L, T) limits the complexity of the relationships that can be derived. If there are more relevant physical quantities than base dimensions, dimensional analysis can only reduce the number of independent variables, not uniquely determine the exponents of all variables. This often results in dimensionless groups (Pi terms) whose exact relationship cannot be determined dimensionally.</p>
+                                </li>
+                                <li><strong>Cannot Distinguish Between Different Forms of Energy (or other quantities with same dimensions):</strong>
+                                    <p>Many different physical quantities share the same dimensions. For example, work, kinetic energy, potential energy, and heat all have the dimension $[ML^2T^{-2}]$. Dimensional analysis cannot distinguish between these different forms or tell you which specific form of energy is relevant in a given context.</p>
+                                </li>
+                            </ol>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">In summary, dimensional analysis is excellent for checking consistency and providing insights into relationships, but it is not a substitute for full theoretical derivation or experimental validation.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_2_2',
+                        title: 'Question 16: Dimensionless Quantities',
+                        text: 'What is a dimensionless quantity? Provide three distinct examples of dimensionless quantities in physics and explain their significance.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>A dimensionless quantity is a physical quantity that has no physical units associated with it. This means its dimension is $M^0 L^0 T^0$ (and also $A^0 \\Theta^0 N^0 J^0$ for other base units). Dimensionless quantities are often ratios of quantities with the same dimensions, causing the units to cancel out.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Significance of Dimensionless Quantities:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Universal Validity:</strong> Dimensionless quantities have the same numerical value regardless of the system of units used (e.g., SI, CGS, Imperial). This makes them universally applicable and useful for comparing phenomena across different scales or systems.</li>
+                                <li><strong>Scaling and Similarity:</strong> They are crucial in scaling laws and similarity principles, particularly in fluid dynamics and engineering. If two systems have the same values for all relevant dimensionless quantities, they are said to be dynamically similar.</li>
+                                <li><strong>Simplification:</strong> They can simplify complex physical problems by reducing the number of variables involved.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Examples of Dimensionless Quantities:</p>
+                            <ol class="list-decimal list-inside space-y-3">
+                                <li><strong>Angle (in radians or degrees):</strong>
+                                    <p>Definition: An angle is typically defined as the ratio of arc length ($s$) to radius ($r$) ($ \\theta = s/r $). Since both arc length and radius are lengths, their ratio is dimensionless.</p>
+                                    <div class="formula">\\text{Dimension of angle} = \\frac{[L]}{[L]} = L^0 = \\text{Dimensionless}</div>
+                                    <p>Significance: Angles are fundamental in describing rotations and periodic motion. Being dimensionless allows them to be used universally in trigonometric functions, which themselves are dimensionless.</p>
+                                </li>
+                                <li><strong>Coefficient of Friction ($\\mu$):</strong>
+                                    <p>Definition: The coefficient of friction is the ratio of the friction force ($F_f$) to the normal force ($F_N$) ($ \\mu = F_f / F_N $). Since both are forces, their ratio is dimensionless.</p>
+                                    <div class="formula">\\text{Dimension of } \\mu = \\frac{[MLT^{-2}]}{[MLT^{-2}]} = M^0 L^0 T^0 = \\text{Dimensionless}</div>
+                                    <p>Significance: It quantifies the "stickiness" or "slipperiness" between two surfaces. Its dimensionless nature means it's a pure number that can be directly compared for different materials regardless of the units used for force.</p>
+                                </li>
+                                <li><strong>Reynolds Number (Re):</strong>
+                                    <p>Definition: The Reynolds number is a key dimensionless quantity in fluid dynamics, representing the ratio of inertial forces to viscous forces. It's typically given by $Re = \\frac{\\rho v L}{\\eta}$, where $\\rho$ is fluid density, $v$ is flow speed, $L$ is a characteristic linear dimension, and $\\eta$ is dynamic viscosity.</p>
+                                    <div class="formula">\\text{Dimension of Re} = \\frac{[ML^{-3}][LT^{-1}][L]}{[ML^{-1}T^{-1}]} = \\frac{[ML^{-1}T^{-1}]}{[ML^{-1}T^{-1}]} = M^0 L^0 T^0 = \\text{Dimensionless}</div>
+                                    <p>Significance: The Reynolds number is critical for predicting flow patterns in different fluid situations. For example, low Reynolds numbers indicate laminar (smooth) flow, while high Reynolds numbers indicate turbulent flow. Its dimensionless nature allows engineers to scale experiments from small models to full-size systems (e.g., wind tunnels for aircraft design).</p>
+                                </li>
+                            </ol>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Dimensionless quantities are powerful tools for generalizing physical phenomena and understanding the underlying ratios that govern them, independent of specific unit systems.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_2_3',
+                        title: 'Question 17: Checking Equation Validity with Dimensions',
+                        text: 'A student proposes the following equation for the final velocity ($v$) of an object under constant acceleration ($a$) over a displacement ($x$), starting from rest: $v = \\sqrt{2ax^2}$. Use dimensional analysis to determine if this equation is dimensionally correct. If not, suggest a likely correct form.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>For an equation to be dimensionally correct, the dimensions on both sides must be identical.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Determine the Dimensions of Each Term in the Proposed Equation</p>
+                            <p>The proposed equation is $v = \\sqrt{2ax^2}$.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li><strong>Left-Hand Side (LHS): Final Velocity ($v$)</strong>
+                                    <p>Dimension of velocity: $[v] = LT^{-1}$.</p>
+                                </li>
+                                <li><strong>Right-Hand Side (RHS): $\\sqrt{2ax^2}$</strong>
+                                    <p>The constant 2 is dimensionless.</p>
+                                    <p>Dimension of acceleration ($a$): $[a] = LT^{-2}$.</p>
+                                    <p>Dimension of displacement ($x$): $[x] = L$.</p>
+                                    <p>Now, combine these dimensions for the term $ax^2$:</p>
+                                    <div class="formula">[ax^2] = [a][x^2] = (LT^{-2})(L^2) = L^3 T^{-2}</div>
+                                    <p>Now, take the square root of the dimension of $ax^2$ for the RHS:</p>
+                                    <div class="formula">[\\sqrt{2ax^2}] = \\sqrt{[L^3 T^{-2}]} = (L^3 T^{-2})^{1/2} = L^{3/2} T^{-1}</div>
+                                </li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Compare Dimensions of LHS and RHS</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>LHS Dimension: $[LT^{-1}]$</li>
+                                <li>RHS Dimension: $[L^{3/2} T^{-1}]$</li>
+                            </ul>
+                            <p>Since $[L^1 T^{-1}] \\neq [L^{3/2} T^{-1}]$, the proposed equation $v = \\sqrt{2ax^2}$ is <strong>dimensionally incorrect</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Suggest a Likely Correct Form</p>
+                            <p>We know the correct kinematic equation for final velocity squared, starting from rest, is $v^2 = 2ax$. Let's check its dimensions.</p>
+                            <p>If $v^2 = 2ax$:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>LHS: $[v^2] = (LT^{-1})^2 = L^2 T^{-2}$</li>
+                                <li>RHS: $[2ax] = [a][x] = (LT^{-2})(L) = L^2 T^{-2}$</li>
+                            </ul>
+                            <p>Since LHS dimensions equal RHS dimensions ($[L^2 T^{-2}] = [L^2 T^{-2}]$), the equation $v^2 = 2ax$ is dimensionally correct. Therefore, the correct form for $v$ would be $v = \\sqrt{2ax}$.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Conclusion: The proposed equation is dimensionally incorrect. A likely correct form is <strong class="font-bold">$v = \\sqrt{2ax}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_2_4',
+                        title: 'Question 18: Dimensional Consistency of Physical Constants',
+                        text: 'The ideal gas law is given by $PV = nRT$, where $P$ is pressure, $V$ is volume, $n$ is amount of substance, $T$ is temperature, and $R$ is the ideal gas constant. Determine the dimensions of the ideal gas constant $R$.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Principle of Dimensional Homogeneity:</p>
+                            <p>For the equation $PV = nRT$ to be dimensionally consistent, the dimensions of the LHS ($PV$) must be equal to the dimensions of the RHS ($nRT$). We need to find the dimensions of $R$.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Write Down the Dimensions of Each Known Quantity</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Pressure ($P$): Force per unit area. $[P] = [F/A] = [MLT^{-2}/L^2] = ML^{-1}T^{-2}$.</li>
+                                <li>Volume ($V$): Length cubed. $[V] = L^3$.</li>
+                                <li>Amount of substance ($n$): Base unit mole. $[n] = N$.</li>
+                                <li>Temperature ($T$): Base unit Kelvin. $[T] = \\Theta$.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Determine the Dimensions of the Left-Hand Side (LHS)</p>
+                            <p>LHS = $PV$</p>
+                            <div class="formula">[PV] = [P][V] = (ML^{-1}T^{-2})(L^3) = ML^{(-1+3)}T^{-2} = ML^2T^{-2}</div>
+                            <p>Note: The dimensions of $ML^2T^{-2}$ are the dimensions of energy (or work). This makes sense, as $PV$ work is a form of energy.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Set LHS Dimensions Equal to RHS Dimensions and Solve for $[R]$</p>
+                            <p>RHS = $nRT$. So, $[nRT] = [n][R][T]$.</p>
+                            <p>From the principle of dimensional homogeneity:</p>
+                            <div class="formula">[PV] = [nRT]</div>
+                            <div class="formula">ML^2T^{-2} = [N][R][\\Theta]</div>
+                            <p>Now, isolate $[R]$:</p>
+                            <div class="formula">[R] = \\frac{ML^2T^{-2}}{N\\Theta} = ML^2T^{-2}N^{-1}\\Theta^{-1}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The dimensions of the ideal gas constant $R$ are <strong class="font-bold">$ML^2T^{-2}N^{-1}\\Theta^{-1}$</strong>. Its SI unit is Joule per mole-Kelvin (J/(mol$\\cdot$K)).</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_2_5',
+                        title: 'Question 19: Dimensionality of Angular Momentum',
+                        text: 'Angular momentum ($L$) is defined as the product of moment of inertia ($I$) and angular velocity ($\\omega$), i.e., $L = I\\omega$. Given that moment of inertia for a point mass is $I = mr^2$ (where $m$ is mass and $r$ is distance) and angular velocity is $\\omega = \\frac{\\Delta\\theta}{\\Delta t}$ (where $\\theta$ is angle and $t$ is time), determine the dimensions of angular momentum.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Step 1: Determine the Dimensions of Moment of Inertia ($I$)</p>
+                            <p>The formula for moment of inertia is $I = mr^2$.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Dimension of mass ($m$): $[m] = M$.</li>
+                                <li>Dimension of distance ($r$): $[r] = L$.</li>
+                            </ul>
+                            <p>Substitute these into the dimensional equation for $I$:</p>
+                            <div class="formula">[I] = [m][r^2] = M L^2</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Determine the Dimensions of Angular Velocity ($\\omega$)</p>
+                            <p>The formula for angular velocity is $\\omega = \\frac{\\Delta\\theta}{\\Delta t}$.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Dimension of angle ($\\Delta\\theta$): Angle is dimensionless (ratio of arc length to radius). So, $[\\Delta\\theta] = M^0 L^0 T^0$.</li>
+                                <li>Dimension of time ($\\Delta t$): $[\\Delta t] = T$.</li>
+                            </ul>
+                            <p>Substitute these into the dimensional equation for $\\omega$:</p>
+                            <div class="formula">[\\omega] = \\frac{[\\Delta\\theta]}{[\\Delta t]} = \\frac{M^0 L^0 T^0}{T} = T^{-1}</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 3: Determine the Dimensions of Angular Momentum ($L$)</p>
+                            <p>The formula for angular momentum is $L = I\\omega$.</p>
+                            <p>Substitute the dimensions found in Step 1 and Step 2:</p>
+                            <div class="formula">[L] = [I][\\omega] = (ML^2)(T^{-1}) = ML^2T^{-1}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The dimensions of angular momentum are <strong class="font-bold">$ML^2T^{-1}$</strong>. Its SI unit is kilogram-meter squared per second (kg$\\cdot$m$^2$/s) or Joule-second (J$\\cdot$s).</p>
+                        `
+                    }
+                ]
+            },
+            section3: {
+                title: "Vectors and Scalars",
+                intro: "Vectors provide a framework for describing quantities with both magnitude and direction. This section covers vector operations like addition, dot products, and cross products, and their application to physical concepts like displacement, work, and torque.",
+                questions: [
+                    {
+                        id: 'q8',
+                        title: 'Question 20: Vector Addition and Resultant Displacement',
+                        text: 'A particle undergoes three successive displacements:<br>1. $\\vec{d_1} = 10.0 \\text{ m}$ at $30.0^\\circ$ North of East.<br>2. $\\vec{d_2} = 15.0 \\text{ m}$ at $60.0^\\circ$ North of West.<br>3. $\\vec{d_3} = 12.0 \\text{ m}$ due South.<br>Find the magnitude and direction of the net displacement of the particle. Express the direction as an angle relative to the positive x-axis (East).',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Step 1: Resolve Each Vector into x and y Components</p>
+                            <p>To add vectors, it's often easiest to break them down into their rectangular (x and y) components. We'll use the convention that East is +x, North is +y.</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Displacement $\\vec{d_1}$ ($10.0 \\text{ m}$ at $30.0^\\circ$ North of East):</strong>
+                                    <div class="formula">d_{1x} = 10.0 \\cos(30.0^\\circ) = 10.0 \\times 0.866 = 8.66 \\text{ m}</div>
+                                    <div class="formula">d_{1y} = 10.0 \\sin(30.0^\\circ) = 10.0 \\times 0.500 = 5.00 \\text{ m}</div>
+                                </li>
+                                <li><strong>Displacement $\\vec{d_2}$ ($15.0 \\text{ m}$ at $60.0^\\circ$ North of West):</strong>
+                                    <p>North of West means the angle is measured from the negative x-axis towards the positive y-axis. The angle with respect to the positive x-axis is $180^\\circ - 60^\\circ = 120^\\circ$.</p>
+                                    <div class="formula">d_{2x} = 15.0 \\cos(120^\\circ) = 15.0 \\times (-0.500) = -7.50 \\text{ m}</div>
+                                    <div class="formula">d_{2y} = 15.0 \\sin(120^\\circ) = 15.0 \\times 0.866 = 13.0 \\text{ m}</div>
+                                </li>
+                                <li><strong>Displacement $\\vec{d_3}$ ($12.0 \\text{ m}$ due South):</strong>
+                                    <p>Due South means it's entirely in the negative y-direction.</p>
+                                    <div class="formula">d_{3x} = 0 \\text{ m}</div>
+                                    <div class="formula">d_{3y} = -12.0 \\text{ m}</div>
+                                </li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Sum the Components to Find the Resultant Vector ($\\vec{R}$)</p>
+                            <p>Add all x-components together and all y-components together:</p>
+                            <div class="formula">R_x = d_{1x} + d_{2x} + d_{3x} = 8.66 \\text{ m} - 7.50 \\text{ m} + 0 \\text{ m} = 1.16 \\text{ m}</div>
+                            <div class="formula">R_y = d_{1y} + d_{2y} + d_{3y} = 5.00 \\text{ m} + 13.0 \\text{ m} - 12.0 \\text{ m} = 6.00 \\text{ m}</div>
+                            <p>So, the resultant displacement vector is $\\vec{R} = (1.16\\hat{i} + 6.00\\hat{j}) \\text{ m}$.</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">Step 3: Calculate the Magnitude of the Resultant Vector</p>
+                            <p>The magnitude of a vector $\\vec{R} = R_x\\hat{i} + R_y\\hat{j}$ is given by $|\\vec{R}| = \\sqrt{R_x^2 + R_y^2}$.</p>
+                            <div class="formula">|\\vec{R}| = \\sqrt{(1.16)^2 + (6.00)^2}</div>
+                            <div class="formula">|\\vec{R}| = \\sqrt{1.3456 + 36.00}</div>
+                            <div class="formula">|\\vec{R}| = \\sqrt{37.3456} \\approx 6.1111 \\text{ m}</div>
+                            <p>Rounding to 3 significant figures (based on input data): <strong class="text-blue-600">|\\vec{R}| \\approx 6.11 \\text{ m}</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 4: Calculate the Direction of the Resultant Vector</p>
+                            <p>The direction (angle $\\theta$) relative to the positive x-axis is found using the arctangent function:</p>
+                            <div class="formula">\\theta = \\arctan(\\frac{R_y}{R_x})</div>
+                            <div class="formula">\\theta = \\arctan(\\frac{6.00}{1.16})</div>
+                            <div class="formula">\\theta \\approx \\arctan(5.1724) \\approx 79.08^\\circ</div>
+                            <p>Since both $R_x$ (1.16 m) and $R_y$ (6.00 m) are positive, the resultant vector lies in the first quadrant, so the angle obtained from arctan is the correct angle relative to the positive x-axis.</p>
+                            <p>Rounding to one decimal place: <strong class="text-blue-600">$\\theta \\approx 79.1^\\circ$</strong>.</p>
+                            
+                            <div class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The net displacement has a magnitude of <strong class="font-bold">6.11 m</strong> and a direction of <strong class="font-bold">$79.1^\\circ$</strong> North of East (or counter-clockwise from the positive x-axis).</div>
+
+                            <p class="font-semibold mt-4 mb-2">Visual Representation of Vector Addition:</p>
+                            <div class="chart-container"><canvas id="vectorChart"></canvas></div>
+                        `
+                    },
+                    {
+                        id: 'q9',
+                        title: 'Question 21: Scalar and Vector Products with Physical Significance',
+                        text: 'Consider two vectors $\\vec{P}$ and $\\vec{Q}$ with magnitudes $P=5$ units and $Q=7$ units, respectively. The angle between them is $60^\\circ$.<br>a) Calculate the scalar product (dot product) $\\vec{P} \\cdot \\vec{Q}$.<br>b) Calculate the magnitude of the vector product (cross product) $|\\vec{P} \\times \\vec{Q}|$.<br>c) Describe the physical significance of the scalar product and the vector product in terms of work done by a force and torque, respectively.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Given Information:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Magnitude of $\\vec{P}$: $|\\vec{P}| = P = 5$ units</li>
+                                <li>Magnitude of $\\vec{Q}$: $|\\vec{Q}| = Q = 7$ units</li>
+                                <li>Angle between them: $\\theta = 60^\\circ$</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">a) Calculate the Scalar Product (Dot Product) $\\vec{P} \\cdot \\vec{Q}$:</p>
+                            <p>The scalar product of two vectors is defined as the product of their magnitudes and the cosine of the angle between them. It results in a scalar quantity.</p>
+                            <div class="formula">\\vec{P} \\cdot \\vec{Q} = |\\vec{P}| |\\vec{Q}| \\cos\\theta</div>
+                            <p>Substitute the given values:</p>
+                            <div class="formula">\\vec{P} \\cdot \\vec{Q} = (5 \\text{ units})(7 \\text{ units}) \\cos(60^\\circ)</div>
+                            <p>We know that $\\cos(60^\\circ) = 0.5$ (or $1/2$).</p>
+                            <div class="formula">\\vec{P} \\cdot \\vec{Q} = 35 \\times 0.5 = 17.5</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer (a): The scalar product is <strong class="font-bold">$17.5$</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">b) Calculate the Magnitude of the Vector Product (Cross Product) $|\\vec{P} \\times \\vec{Q}|$:</p>
+                            <p>The magnitude of the vector product of two vectors is defined as the product of their magnitudes and the sine of the angle between them. The result is a vector quantity, and its magnitude is what we are calculating here.</p>
+                            <div class="formula">|\\vec{P} \\times \\vec{Q}| = |\\vec{P}| |\\vec{Q}| \\sin\\theta</div>
+                            <p>Substitute the given values:</p>
+                            <div class="formula">|\\vec{P} \\times \\vec{Q}| = (5 \\text{ units})(7 \\text{ units}) \\sin(60^\\circ)</div>
+                            <p>We know that $\\sin(60^\\circ) = \\frac{\\sqrt{3}}{2} \\approx 0.866$.</p>
+                            <div class="formula">|\\vec{P} \\times \\vec{Q}| = 35 \\times \\frac{\\sqrt{3}}{2} \\approx 35 \\times 0.8660</div>
+                            <div class="formula">|\\vec{P} \\times \\vec{Q}| \\approx 30.31</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer (b): The magnitude of the vector product is approximately <strong class="font-bold">$30.3$</strong>.</p>
+                            
+                            <p class="font-semibold mt-4 mb-2">c) Physical Significance of Scalar and Vector Products:</p>
+                            <ul class="list-disc list-inside space-y-3">
+                                <li><strong>Scalar Product (Dot Product) and Work Done:</strong>
+                                    <p>The scalar product is used to calculate the component of one vector that acts in the direction of another. In physics, a prime example is the calculation of <strong>Work Done ($W$)</strong> by a constant force ($\\vec{F}$) on an object undergoing a displacement ($\\vec{s}$).</p>
+                                    <div class="formula">W = \\vec{F} \\cdot \\vec{s} = |\\vec{F}| |\\vec{s}| \\cos\\theta</div>
+                                    <p>Here, $\\theta$ is the angle between the force and displacement vectors. Work is a scalar quantity, representing the energy transferred to or from an object. The dot product naturally accounts for the fact that only the component of the force parallel to the displacement contributes to the work done. If the force is perpendicular to the displacement ($\\theta = 90^\\circ$, $\\cos 90^\\circ = 0$), no work is done by that force.</p>
+                                </li>
+                                <li><strong>Vector Product (Cross Product) and Torque:</strong>
+                                    <p>The vector product produces a new vector that is perpendicular to the plane containing the two original vectors. Its magnitude is related to the area of the parallelogram formed by the two vectors. A key application in physics is the calculation of <strong>Torque ($\\vec{\\tau}$)</strong>, which is the rotational equivalent of force.</p>
+                                    <div class="formula">\\vec{\\tau} = \\vec{r} \\times \\vec{F}</div>
+                                    <p>Here, $\\vec{r}$ is the position vector from the axis of rotation to the point where the force $\\vec{F}$ is applied. The magnitude of the torque is $|\\vec{\\tau}| = |\\vec{r}| |\\vec{F}| \\sin\\theta$, where $\\theta$ is the angle between $\\vec{r}$ and $\\vec{F}$. The direction of the torque vector indicates the axis of rotation and is given by the right-hand rule. Torque measures the effectiveness of a force in causing rotational motion. Only the component of the force perpendicular to the position vector contributes to the torque.</p>
+                                </li>
+                            </ul>
+                        `
+                    },
+                    {
+                        id: 'q10',
+                        title: 'Question 22: Work Done and Torque Calculation in 3D',
+                        text: 'A force $\\vec{F} = (6.0\\hat{i} - 8.0\\hat{j} + 10.0\\hat{k}) \\text{ N}$ acts on a particle. The particle\'s displacement is $\\vec{s} = (2.0\\hat{i} + 3.0\\hat{j} - 4.0\\hat{k}) \\text{ m}$.<br>a) Calculate the work done by the force on the particle. Is work a scalar or vector quantity?<br>b) If this force creates a torque about the origin, and the position vector of the point where the force is applied is $\\vec{r} = (1.0\\hat{i} + 0.0\\hat{j} + 0.0\\hat{k}) \\text{ m}$, calculate the torque $\\vec{\\tau} = \\vec{r} \\times \\vec{F}$.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Given Vectors:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Force: $\\vec{F} = (6.0\\hat{i} - 8.0\\hat{j} + 10.0\\hat{k}) \\text{ N}$</li>
+                                <li>Displacement: $\\vec{s} = (2.0\\hat{i} + 3.0\\hat{j} - 4.0\\hat{k}) \\text{ m}$</li>
+                                <li>Position vector for torque: $\\vec{r} = (1.0\\hat{i} + 0.0\\hat{j} + 0.0\\hat{k}) \\text{ m}$</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">a) Calculate the Work Done (W):</p>
+                            <p>Work done by a constant force is given by the scalar product (dot product) of the force vector and the displacement vector: $W = \\vec{F} \\cdot \\vec{s}$.</p>
+                            <p>For vectors in component form ($\\vec{A} = A_x\\hat{i} + A_y\\hat{j} + A_z\\hat{k}$ and $\\vec{B} = B_x\\hat{i} + B_y\\hat{j} + B_z\\hat{k}$), the dot product is:</p>
+                            <div class="formula">\\vec{A} \\cdot \\vec{B} = A_x B_x + A_y B_y + A_z B_z</div>
+                            <p>Applying this to $\\vec{F} \\cdot \\vec{s}$:</p>
+                            <div class="formula">W = (6.0)(2.0) + (-8.0)(3.0) + (10.0)(-4.0)</div>
+                            <div class="formula">W = 12.0 - 24.0 - 40.0</div>
+                            <div class="formula">W = -52.0 \\text{ J}</div>
+                            <p>The work done is negative, indicating that the force opposes the displacement, or that the force is doing negative work on the particle (e.g., slowing it down).</p>
+                            <p><strong>Work is a <strong class="text-blue-600">scalar</strong> quantity.</strong> It has magnitude (e.g., 52.0 Joules) but no direction. It represents a transfer of energy.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer (a): Work done $W = -52.0 \\text{ J}$. Work is a <strong class="font-bold">scalar</strong> quantity.</p>
+
+                            <p class="font-semibold mt-4 mb-2">b) Calculate the Torque ($\\vec{\\tau}$):</p>
+                            <p>Torque is given by the vector product (cross product) of the position vector (from the origin to the point of force application) and the force vector: $\\vec{\\tau} = \\vec{r} \\times \\vec{F}$.</p>
+                            <p>For vectors in component form, the cross product can be calculated using a determinant:</p>
+                            <div class="formula">\\vec{r} \\times \\vec{F} = 
+                            \\begin{vmatrix} 
+                            \\hat{i} & \\hat{j} & \\hat{k} \\\\ 
+                            r_x & r_y & r_z \\\\
+                            F_x & F_y & F_z
+                            \\end{vmatrix}
+                            </div>
+                            <p>Substitute the components of $\\vec{r} = (1.0, 0.0, 0.0)$ and $\\vec{F} = (6.0, -8.0, 10.0)$:</p>
+                            <div class="formula">\\vec{\\tau} = 
+                            \\begin{vmatrix} 
+                            \\hat{i} & \\hat{j} & \\hat{k} \\\\ 
+                            1.0 & 0.0 & 0.0 \\\\
+                            6.0 & -8.0 & 10.0
+                            \\end{vmatrix}
+                            </div>
+                            <p>Expand the determinant:</p>
+                            <div class="formula">\\vec{\\tau} = \\hat{i}((0.0)(10.0) - (0.0)(-8.0)) - \\hat{j}((1.0)(10.0) - (0.0)(6.0)) + \\hat{k}((1.0)(-8.0) - (0.0)(6.0))</div>
+                            <div class="formula">\\vec{\\tau} = \\hat{i}(0 - 0) - \\hat{j}(10.0 - 0) + \\hat{k}(-8.0 - 0)</div>
+                            <div class="formula">\\vec{\\tau} = 0\\hat{i} - 10.0\\hat{j} - 8.0\\hat{k}</div>
+                            <p>The unit for torque is Newton-meter (N$\\cdot$m).</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer (b): The torque is <strong class="font-bold">$\\vec{\\tau} = (0\\hat{i} - 10.0\\hat{j} - 8.0\\hat{k}) \\text{ N} \\cdot \\text{m}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_new_3',
+                        title: 'Question 23: Magnetic Force on a Moving Charge',
+                        text: 'An electron (charge $q = -1.60 \\times 10^{-19} \\text{ C}$) moves with a velocity $\\vec{v} = (2.0 \\times 10^6 \\hat{i} + 3.0 \\times 10^6 \\hat{j}) \\text{ m/s}$ in a uniform magnetic field $\\vec{B} = (0.50\\hat{i} - 0.20\\hat{k}) \\text{ T}$. Calculate the magnetic force $\\vec{F}_B = q(\\vec{v} \\times \\vec{B})$ acting on the electron.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Given Information:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Charge: $q = -1.60 \\times 10^{-19} \\text{ C}$</li>
+                                <li>Velocity: $\\vec{v} = (2.0 \\times 10^6 \\hat{i} + 3.0 \\times 10^6 \\hat{j} + 0\\hat{k}) \\text{ m/s}$</li>
+                                <li>Magnetic Field: $\\vec{B} = (0.50\\hat{i} + 0\\hat{j} - 0.20\\hat{k}) \\text{ T}$</li>
+                            </ul>
+                            <p>The magnetic force is given by $\\vec{F}_B = q(\\vec{v} \\times \\vec{B})$. We first need to calculate the cross product $\\vec{v} \\times \\vec{B}$.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 1: Calculate the Cross Product ($\\vec{v} \\times \\vec{B}$)</p>
+                            <p>Using the determinant method for the cross product:</p>
+                            <div class="formula">\\vec{v} \\times \\vec{B} = 
+                            \\begin{vmatrix} 
+                            \\hat{i} & \\hat{j} & \\hat{k} \\\\ 
+                            v_x & v_y & v_z \\\\
+                            B_x & B_y & B_z
+                            \\end{vmatrix}
+                            </div>
+                            <p>Substitute the components:</p>
+                            <div class="formula">\\vec{v} \\times \\vec{B} = 
+                            \\begin{vmatrix} 
+                            \\hat{i} & \\hat{j} & \\hat{k} \\\\ 
+                            2.0 \\times 10^6 & 3.0 \\times 10^6 & 0 \\\\
+                            0.50 & 0 & -0.20
+                            \\end{vmatrix}
+                            </div>
+                            <p>Expand the determinant:</p>
+                            <div class="formula">\\vec{v} \\times \\vec{B} = \\hat{i}((3.0 \\times 10^6)(-0.20) - (0)(0))</div>
+                            <div class="formula">\\quad - \\hat{j}((2.0 \\times 10^6)(-0.20) - (0)(0.50))</div>
+                            <div class="formula">\\quad + \\hat{k}((2.0 \\times 10^6)(0) - (3.0 \\times 10^6)(0.50))</div>
+                            <div class="formula">\\vec{v} \\times \\vec{B} = \\hat{i}(-0.60 \\times 10^6) - \\hat{j}(-0.40 \\times 10^6) + \\hat{k}(-1.50 \\times 10^6)</div>
+                            <div class="formula">\\vec{v} \\times \\vec{B} = (-0.60\\hat{i} + 0.40\\hat{j} - 1.50\\hat{k}) \\times 10^6 \\text{ (m/s)}\\cdot\\text{T}</div>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Calculate the Magnetic Force ($\\vec{F}_B$)</p>
+                            <p>Now, multiply the result of the cross product by the charge $q$:</p>
+                            <div class="formula">\\vec{F}_B = q (\\vec{v} \\times \\vec{B})</div>
+                            <div class="formula">\\vec{F}_B = (-1.60 \\times 10^{-19} \\text{ C}) \\times (-0.60\\hat{i} + 0.40\\hat{j} - 1.50\\hat{k}) \\times 10^6 \\text{ (m/s)}\\cdot\\text{T}</div>
+                            <p>Distribute the scalar $q$:</p>
+                            <div class="formula">\\vec{F}_B = ((-1.60)(-0.60)\\hat{i} + (-1.60)(0.40)\\hat{j} + (-1.60)(-1.50)\\hat{k}) \\times 10^{-19} \\times 10^6 \\text{ N}</div>
+                            <div class="formula">\\vec{F}_B = (0.96\\hat{i} - 0.64\\hat{j} + 2.40\\hat{k}) \\times 10^{-13} \\text{ N}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Final Answer: The magnetic force on the electron is <strong class="font-bold">$\\vec{F}_B = (0.96\\hat{i} - 0.64\\hat{j} + 2.40\\hat{k}) \\times 10^{-13} \\text{ N}$</strong>.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_1',
+                        title: 'Question 24: Properties of Scalar Quantities',
+                        text: 'Define a scalar quantity and list at least three key properties that distinguish it from a vector quantity. Provide three distinct examples of scalar quantities in physics.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>In physics, quantities are broadly categorized into scalars and vectors based on whether they possess direction in addition to magnitude.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Definition of a Scalar Quantity:</p>
+                            <p>A <strong>scalar quantity</strong> is a physical quantity that is completely described by its magnitude (a numerical value and a unit) only. It does not have any associated direction in space.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Key Properties Distinguishing Scalars from Vectors:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Direction:</strong> Scalars have magnitude only; they do not have direction. Vectors have both magnitude and direction.</li>
+                                <li><strong>Addition/Subtraction:</strong> Scalars are added or subtracted using simple arithmetic rules (e.g., $2 \\text{ kg} + 3 \\text{ kg} = 5 \\text{ kg}$). Vectors require specific rules for addition and subtraction (e.g., triangle rule, parallelogram rule, or component method) that account for their directions.</li>
+                                <li><strong>Multiplication:</strong> When multiplying a scalar by another scalar, the result is a scalar. When multiplying a vector by a scalar, the result is a vector whose magnitude is scaled and direction remains the same (or reverses if the scalar is negative). The multiplication of two vectors can result in either a scalar (dot product) or another vector (cross product).</li>
+                                <li><strong>Representation:</strong> Scalars are represented by a single number and a unit (e.g., $5 \\text{ m}$, $10 \\text{ kg}$). Vectors are typically represented by an arrow over a symbol ($\\vec{A}$), boldface type (<strong>A</strong>), or components (e.g., $5\\hat{i} + 3\\hat{j}$).</li>
+                                <li><strong>Coordinate System Independence:</strong> The magnitude of a scalar quantity is independent of the choice of coordinate system. The components of a vector, however, depend on the chosen coordinate system, although the vector itself (its magnitude and intrinsic direction) does not.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Examples of Scalar Quantities in Physics:</p>
+                            <ol class="list-decimal list-inside space-y-3">
+                                <li><strong>Mass:</strong>
+                                    <p>Measures the amount of matter in an object. It has a magnitude (e.g., $5 \\text{ kg}$) but no direction. A $5 \\text{ kg}$ mass is $5 \\text{ kg}$ regardless of its orientation or motion.</p>
+                                </li>
+                                <li><strong>Temperature:</strong>
+                                    <p>Measures the degree of hotness or coldness of an object. It has a magnitude (e.g., $25^\\circ \\text{C}$) but no direction. A temperature of $25^\\circ \\text{C}$ is the same everywhere within a uniformly heated object.</p>
+                                </li>
+                                <li><strong>Time:</strong>
+                                    <p>Measures the duration of an event or the interval between two events. It has a magnitude (e.g., $10 \\text{ seconds}$) but no direction. Time progresses universally, not in a specific spatial direction.</p>
+                                </li>
+                                <li><strong>Energy (e.g., Kinetic Energy, Potential Energy, Work):</strong>
+                                    <p>Measures the capacity to do work. It has a magnitude (e.g., $100 \\text{ Joules}$) but no direction. Energy is a conserved quantity that can be transferred or transformed, but it doesn't "point" anywhere.</p>
+                                </li>
+                                <li><strong>Distance:</strong>
+                                    <p>Measures the total path length traveled by an object, irrespective of direction. It has a magnitude (e.g., $50 \\text{ meters}$) but no direction. (Contrast with displacement, which is a vector).</p>
+                                </li>
+                            </ol>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Scalars are fundamental quantities that describe "how much" of something there is, without specifying "where" or "in what orientation."</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_2',
+                        title: 'Question 25: Vector Equality and Components',
+                        text: 'Explain the conditions under which two vectors are considered equal. If vector $\\vec{A}$ has components $(A_x, A_y, A_z)$ and vector $\\vec{B}$ has components $(B_x, B_y, B_z)$, what must be true for $\\vec{A} = \\vec{B}$?',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>For two vectors to be considered equal, they must satisfy specific conditions related to both their magnitude and direction. This concept is fundamental to vector algebra.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Conditions for Vector Equality:</p>
+                            <p>Two vectors, $\\vec{A}$ and $\\vec{B}$, are considered <strong>equal</strong> if and only if they meet the following two criteria:</p>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <li><strong>They have the same magnitude.</strong> This means their lengths are identical: $|\\vec{A}| = |\\vec{B}|$.</li>
+                                <li><strong>They have the same direction.</strong> This means they point in the exact same orientation in space.</li>
+                            </ol>
+                            <p>It is important to note that vectors are "free vectors" in many physics contexts, meaning their starting point (or point of application) does not affect their equality. A vector can be translated (moved) in space without changing its identity, as long as its magnitude and direction remain constant.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Vector Equality in Component Form:</p>
+                            <p>If vector $\\vec{A}$ has components $(A_x, A_y, A_z)$ and vector $\\vec{B}$ has components $(B_x, B_y, B_z)$ in a chosen Cartesian coordinate system, then for $\\vec{A} = \\vec{B}$ to be true, the following must hold:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Their corresponding components must be equal.</strong> That is:
+                                    <div class="formula">A_x = B_x</div>
+                                    <div class="formula">A_y = B_y</div>
+                                    <div class="formula">A_z = B_z</div>
+                                </li>
+                            </ul>
+                            <p><strong>Why this is sufficient:</strong> If all corresponding components are equal, it automatically implies that both their magnitudes and directions are identical. The magnitude is calculated as $\\sqrt{A_x^2 + A_y^2 + A_z^2}$, and if $A_x=B_x$, $A_y=B_y$, $A_z=B_z$, then their magnitudes will clearly be equal. Their direction is determined by the ratios of their components and their overall orientation, which will also be identical if the components match.</p>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">In essence, two vectors are equal if they are the same vector, regardless of where they are drawn in space, and this is mathematically expressed by the equality of their respective components.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_3',
+                        title: 'Question 26: Geometric Interpretation of Dot Product',
+                        text: 'Explain the geometric interpretation of the scalar product (dot product) of two vectors, $\\vec{A} \\cdot \\vec{B}$. How does this interpretation help in understanding its physical applications, such as work done?',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The scalar product, or dot product, of two vectors $\\vec{A}$ and $\\vec{B}$ is defined as $\\vec{A} \\cdot \\vec{B} = |\\vec{A}| |\\vec{B}| \\cos\\theta$, where $\\theta$ is the angle between the two vectors. Its geometric interpretation provides deep insight into its physical applications.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Geometric Interpretation:</p>
+                            <p>The dot product $\\vec{A} \\cdot \\vec{B}$ can be geometrically interpreted in two equivalent ways:</p>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <li><strong>Product of Magnitudes and Cosine of Angle:</strong>
+                                    <p>It is the product of the magnitude of one vector ($|\\vec{A}|$) and the magnitude of the projection of the other vector ($|\\vec{B}|$) onto the first vector. Alternatively, it's the product of $|\\vec{B}|$ and the projection of $|\\vec{A}|$ onto $|\\vec{B}|$.</p>
+                                    <p>Consider the projection of $\\vec{B}$ onto $\\vec{A}$: This projection has a magnitude of $|\\vec{B}| \\cos\\theta$. So, $\\vec{A} \\cdot \\vec{B} = |\\vec{A}| (|\\vec{B}| \\cos\\theta)$.</p>
+                                    <p>Similarly, the projection of $\\vec{A}$ onto $\\vec{B}$ has a magnitude of $|\\vec{A}| \\cos\\theta$. So, $\\vec{A} \\cdot \\vec{B} = |\\vec{B}| (|\\vec{A}| \\cos\\theta)$.</p>
+                                    <p>This means the dot product quantifies how much of one vector "points in the direction of" or "is aligned with" the other vector.</p>
+                                </li>
+                                <li><strong>Measure of Parallelism:</strong>
+                                    <p>The dot product is a measure of how parallel two vectors are.
+                                        <ul class="list-circle list-inside ml-4">
+                                            <li>If $\\vec{A}$ and $\\vec{B}$ are parallel ($\\theta = 0^\\circ$, $\\cos 0^\\circ = 1$), $\\vec{A} \\cdot \\vec{B} = |\\vec{A}| |\\vec{B}|$, which is their maximum positive value.</li>
+                                            <li>If $\\vec{A}$ and $\\vec{B}$ are perpendicular (orthogonal) ($\\theta = 90^\\circ$, $\\cos 90^\\circ = 0$), $\\vec{A} \\cdot \\vec{B} = 0$. This is a crucial test for orthogonality.</li>
+                                            <li>If $\\vec{A}$ and $\\vec{B}$ are anti-parallel ($\\theta = 180^\\circ$, $\\cos 180^\\circ = -1$), $\\vec{A} \\cdot \\vec{B} = -|\\vec{A}| |\\vec{B}|$, which is their maximum negative value.</li>
+                                        </ul>
+                                    </p>
+                                </li>
+                            </ol>
+
+                            <p class="font-semibold mt-4 mb-2">Physical Application - Work Done:</p>
+                            <p>The geometric interpretation is particularly useful in understanding the physical concept of <strong>work done ($W$)</strong> by a constant force ($\\vec{F}$) causing a displacement ($\\vec{s}$):</p>
+                            <div class="formula">W = \\vec{F} \\cdot \\vec{s} = |\\vec{F}| |\\vec{s}| \\cos\\theta</div>
+                            <p>Here, $|\\vec{F}| \\cos\\theta$ represents the component of the force that is parallel to the displacement. Only this parallel component of the force actually contributes to the work done. The component of the force perpendicular to the displacement does no work. For example:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li>If you push a block horizontally (force parallel to displacement), all your effort contributes to work. $\\theta = 0^\\circ$, $\\cos\\theta = 1$, $W = |\\vec{F}| |\\vec{s}|$.</li>
+                                <li>If you carry a book horizontally across a room (force upwards, displacement horizontal), the force you exert on the book is perpendicular to its displacement. $\\theta = 90^\\circ$, $\\cos\\theta = 0$, $W = 0$. You do no work on the book against gravity.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">The dot product thus elegantly captures the physical idea that only the "effective" component of a force (the part aligned with motion) contributes to energy transfer as work.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_4',
+                        title: 'Question 27: Geometric Interpretation of Cross Product',
+                        text: 'Explain the geometric interpretation of the vector product (cross product) of two vectors, $\\vec{A} \\times \\vec{B}$. How does this interpretation help in understanding its physical applications, such as torque?',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>The vector product, or cross product, of two vectors $\\vec{A}$ and $\\vec{B}$ is defined as a new vector $\\vec{C} = \\vec{A} \\times \\vec{B}$. Its magnitude is $|\\vec{C}| = |\\vec{A}| |\\vec{B}| \\sin\\theta$, where $\\theta$ is the angle between the two vectors, and its direction is perpendicular to the plane containing $\\vec{A}$ and $\\vec{B}$.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Geometric Interpretation:</p>
+                            <p>The cross product $\\vec{A} \\times \\vec{B}$ has two key geometric interpretations:</p>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <li><strong>Magnitude as Area:</strong>
+                                    <p>The magnitude of the cross product, $|\\vec{A} \\times \\vec{B}| = |\\vec{A}| |\\vec{B}| \\sin\\theta$, represents the area of the parallelogram formed by the two vectors $\\vec{A}$ and $\\vec{B}$ when they are placed tail-to-tail.</p>
+                                    <p>The height of the parallelogram with base $|\\vec{A}|$ is $|\\vec{B}| \\sin\\theta$. So, Area = Base $\\times$ Height = $|\\vec{A}| (|\\vec{B}| \\sin\\theta)$.</p>
+                                    <p>This means the cross product quantifies how perpendicular two vectors are.
+                                        <ul class="list-circle list-inside ml-4">
+                                            <li>If $\\vec{A}$ and $\\vec{B}$ are parallel or anti-parallel ($\\theta = 0^\\circ$ or $180^\\circ$, $\\sin\\theta = 0$), then $|\\vec{A} \\times \\vec{B}| = 0$. This makes sense as they cannot form a parallelogram with non-zero area. This is a crucial test for parallelism.</li>
+                                            <li>If $\\vec{A}$ and $\\vec{B}$ are perpendicular ($\\theta = 90^\\circ$, $\\sin\\theta = 1$), then $|\\vec{A} \\times \\vec{B}| = |\\vec{A}| |\\vec{B}|$, which is their maximum value.</li>
+                                        </ul>
+                                    </p>
+                                </li>
+                                <li><strong>Direction by Right-Hand Rule:</strong>
+                                    <p>The direction of the resultant vector $\\vec{C} = \\vec{A} \\times \\vec{B}$ is perpendicular to the plane containing both $\\vec{A}$ and $\\vec{B}$. Its specific orientation is determined by the <strong>right-hand rule</strong>:</p>
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li>Point the fingers of your right hand in the direction of the first vector ($\\vec{A}$).</li>
+                                        <li>Curl your fingers towards the direction of the second vector ($\\vec{B}$) through the smaller angle between them.</li>
+                                        <li>Your thumb will point in the direction of the resultant vector ($\\vec{C}$).</li>
+                                    </ul>
+                                </li>
+                            </ol>
+
+                            <p class="font-semibold mt-4 mb-2">Physical Application - Torque:</p>
+                            <p>The geometric interpretation is critical for understanding <strong>torque ($\\vec{\\tau}$)</strong>, which is the rotational effect of a force. Torque is defined as $\\vec{\\tau} = \\vec{r} \\times \\vec{F}$, where $\\vec{r}$ is the position vector from the pivot point to the point where the force $\\vec{F}$ is applied.</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Magnitude of Torque:</strong> The magnitude of torque, $|\\vec{\\tau}| = |\\vec{r}| |\\vec{F}| \\sin\\theta$, tells us how effective the force is at causing rotation.
+                                    <p>The term $|\\vec{F}| \\sin\\theta$ is the component of the force perpendicular to the position vector (or the lever arm). Only this perpendicular component causes rotation. If the force is applied directly towards or away from the pivot ($\\theta = 0^\\circ$ or $180^\\circ$), $\\sin\\theta = 0$, and the torque is zero – no rotation occurs.</p>
+                                </li>
+                                <li><strong>Direction of Torque:</strong> The direction of $\\vec{\\tau}$ (given by the right-hand rule) indicates the axis of rotation. For example, if a force applied to a wrench causes it to rotate clockwise, the torque vector would point into the page (for a standard setup). This direction is crucial for analyzing rotational dynamics.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">The cross product precisely quantifies the rotational effectiveness of a force and defines the axis of rotation, making it indispensable in rotational mechanics.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_5',
+                        title: 'Question 28: Scalar vs. Vector Fields',
+                        text: 'Differentiate between a scalar field and a vector field. Provide one example of each from physics and explain how they are represented.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>Fields are fundamental concepts in physics used to describe how a physical quantity varies over space. They can be classified as scalar fields or vector fields.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Scalar Field:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A scalar field assigns a scalar value (a magnitude only) to every point in space. The value at each point is independent of the coordinate system chosen.</li>
+                                <li><strong>Representation:</strong> Scalar fields are typically represented by assigning a numerical value (and unit) to each point. This can be visualized using contour lines (lines connecting points of equal value), isotherms (for temperature), or equipotential lines (for electric potential).</li>
+                                <li><strong>Example: Temperature Field of a Room</strong>
+                                    <p>In a room, the temperature at any given point is a scalar quantity (e.g., $22^\\circ \\text{C}$). It has a magnitude but no direction. The temperature field of the room describes how this scalar value (temperature) varies from point to point throughout the room. You could map the room and write down the temperature at every coordinate $(x,y,z)$, or draw lines on a diagram connecting points of the same temperature.</p>
+                                </li>
+                                <li><strong>Other Examples:</strong> Electric potential field, pressure field in a fluid, density field.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Vector Field:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A vector field assigns a vector quantity (both magnitude and direction) to every point in space. The vector at each point can vary in both its magnitude and direction.</li>
+                                <li><strong>Representation:</strong> Vector fields are typically represented by drawing arrows at various points in space. The length of the arrow indicates the magnitude of the vector quantity at that point, and the direction of the arrow indicates its direction.</li>
+                                <li><strong>Example: Gravitational Field around Earth</strong>
+                                    <p>The gravitational field around Earth is a vector field. At every point in space, there is a gravitational force that would act on a test mass. This force has both a magnitude (which depends on the distance from Earth) and a direction (always pointing towards the center of Earth). You would represent this by drawing arrows at different locations, with longer arrows closer to Earth and all arrows pointing inwards.</p>
+                                </li>
+                                <li><strong>Other Examples:</strong> Electric field, magnetic field, fluid velocity field (e.g., wind patterns).</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Scalar fields describe "how much" of a quantity is present at each point, while vector fields describe "how much" and "in what direction" a quantity acts at each point.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_6',
+                        title: 'Question 29: Components of a Vector and Coordinate Systems',
+                        text: 'A vector $\\vec{A}$ has a magnitude of $10.0$ units and makes an angle of $150^\\circ$ with the positive x-axis in the xy-plane. Calculate its components ($A_x, A_y$). If the coordinate system were rotated such that the new x\'-axis aligned with the original y-axis, would the vector itself change? Explain.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Solution Steps:</p>
+                            <p class="font-semibold mt-4 mb-2">Step 1: Calculate the Components of $\\vec{A}$ in the Original Coordinate System</p>
+                            <p>Given: Magnitude $|\\vec{A}| = 10.0$ units, angle $\\theta = 150^\\circ$ with the positive x-axis.</p>
+                            <p>The components are calculated using trigonometry:</p>
+                            <div class="formula">A_x = |\\vec{A}| \\cos\\theta = 10.0 \\cos(150^\\circ)</div>
+                            <p>We know $\\cos(150^\\circ) = -\\cos(30^\\circ) = -\\frac{\\sqrt{3}}{2} \\approx -0.866$.</p>
+                            <div class="formula">A_x = 10.0 \\times (-0.866) = -8.66 \\text{ units}</div>
+                            <div class="formula">A_y = |\\vec{A}| \\sin\\theta = 10.0 \\sin(150^\\circ)</div>
+                            <p>We know $\\sin(150^\\circ) = \\sin(30^\\circ) = \\frac{1}{2} = 0.5$.</p>
+                            <div class="formula">A_y = 10.0 \\times 0.5 = 5.00 \\text{ units}</div>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">The components of $\\vec{A}$ are <strong class="font-bold">$A_x = -8.66$ units</strong> and <strong class="font-bold">$A_y = 5.00$ units</strong>.</p>
+
+                            <p class="font-semibold mt-4 mb-2">Step 2: Analyze if the Vector Itself Changes with Coordinate System Rotation</p>
+                            <p>If the coordinate system were rotated such that the new x\'-axis aligned with the original y-axis, the vector $\\vec{A}$ itself <strong>would NOT change</strong>.</p>
+                            <p><strong>Explanation:</strong></p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Vectors are Independent of Coordinate Systems:</strong> A vector is a physical entity that exists independently of the coordinate system chosen to describe it. It represents a physical quantity (like displacement, velocity, force) that has an inherent magnitude and direction in space.</li>
+                                <li><strong>Components Change, Not the Vector:</strong> What changes when you rotate the coordinate system are the *components* of the vector. The components are merely the projections of the vector onto the axes of the chosen coordinate system. If you rotate the axes, the projections onto those new axes will naturally be different, but the underlying vector (its physical direction and magnitude) remains the same.</li>
+                                <li><strong>Analogy:</strong> Think of a building. The building itself doesn't change if you decide to describe its location using different street names or a different grid system on a map. Similarly, a force acting on an object is still the same force, even if you describe its magnitude and direction using different coordinate axes.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">Conclusion: The vector $\\vec{A}$ itself would <strong class="font-bold">NOT change</strong>. Only its components with respect to the new coordinate system would change.</p>
+                        `
+                    },
+                    {
+                        id: 'q_concept_3_7',
+                        title: 'Question 30: Pseudo-vectors and Pseudo-scalars',
+                        text: 'Briefly explain what pseudo-vectors (axial vectors) and pseudo-scalars are, and how they differ from true vectors (polar vectors) and true scalars. Provide one example of a pseudo-vector and one example of a pseudo-scalar from physics.',
+                        solution: `
+                            <p class="font-semibold mt-4 mb-2">Detailed Explanation:</p>
+                            <p>While most physical quantities are either true scalars or true vectors, some quantities behave differently under coordinate transformations, particularly reflections. These are known as pseudo-scalars and pseudo-vectors.</p>
+
+                            <p class="font-semibold mt-4 mb-2">True Scalars (Scalars):</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A true scalar is a quantity that has magnitude only and remains unchanged (invariant) under all coordinate transformations, including reflections (parity inversion).</li>
+                                <li><strong>Behavior under Reflection:</strong> If you reflect your coordinate system (e.g., swap x to -x, y to -y, z to -z), the numerical value of a true scalar remains exactly the same.</li>
+                                <li><strong>Example:</strong> Mass, temperature, energy, time, electric charge.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Pseudo-scalars:</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A pseudo-scalar is a quantity that has magnitude only, but its sign (or value) changes under a reflection (parity inversion) of the coordinate system.</li>
+                                <li><strong>Behavior under Reflection:</strong> If you reflect your coordinate system, a pseudo-scalar changes its sign.</li>
+                                <li><strong>Example: Magnetic Flux ($\\Phi_B$)</strong>
+                                    <p>Magnetic flux is defined as $\\Phi_B = \\vec{B} \\cdot \\vec{A}$, where $\\vec{B}$ is the magnetic field (a true vector) and $\\vec{A}$ is the area vector (a pseudo-vector). Since the dot product of a true vector and a pseudo-vector yields a pseudo-scalar, magnetic flux is a pseudo-scalar. If you reflect your coordinate system, the magnetic field $\\vec{B}$ changes direction, and the area vector $\\vec{A}$ also changes direction in a specific way, causing $\\Phi_B$ to flip its sign.</p>
+                                </li>
+                                <li><strong>Other Examples:</strong> Magnetic charge (hypothetical), helicity (dot product of momentum and spin).</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">True Vectors (Polar Vectors):</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A true vector (or polar vector) is a quantity that has both magnitude and direction, and its components change sign under a reflection of the coordinate system in the same way as the coordinates themselves.</li>
+                                <li><strong>Behavior under Reflection:</strong> If you reflect your coordinate system, the components of a true vector change sign (e.g., $x \\to -x$, $y \\to -y$, $z \\to -z$). The vector points in the reflected direction.</li>
+                                <li><strong>Example:</strong> Displacement, velocity, force, momentum, electric field.</li>
+                            </ul>
+
+                            <p class="font-semibold mt-4 mb-2">Pseudo-vectors (Axial Vectors):</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><strong>Definition:</strong> A pseudo-vector (or axial vector) is a quantity that has both magnitude and direction, but its components do *not* change sign under a reflection of the coordinate system in the same way as the coordinates. Instead, they behave like a cross product of two true vectors.</li>
+                                <li><strong>Behavior under Reflection:</strong> If you reflect your coordinate system, a pseudo-vector's components remain the same, but its direction effectively reverses relative to the reflected coordinate system. This is because they are typically defined by a "right-hand rule" which flips when the coordinate system is reflected.</li>
+                                <li><strong>Example: Torque ($\\vec{\\tau}$)</strong>
+                                    <p>Torque is defined as $\\vec{\\tau} = \\vec{r} \\times \\vec{F}$, where $\\vec{r}$ (position) and $\\vec{F}$ (force) are both true vectors. The cross product of two true vectors results in a pseudo-vector. If you reflect your coordinate system, $\\vec{r}$ and $\\vec{F}$ both flip their directions, but their cross product (and thus $\\vec{\\tau}$) maintains its original component values, effectively reversing its "handedness" or direction relative to the reflected space.</p>
+                                </li>
+                                <li><strong>Other Examples:</strong> Angular velocity, angular momentum, magnetic field.</li>
+                            </ul>
+                            <p class="bg-blue-100 text-blue-800 p-3 rounded-md">The distinction between true and pseudo-quantities becomes important in advanced physics, particularly in phenomena involving parity symmetry (e.g., weak nuclear force).</p>
+                        `
+                    }
+                ]
+            }
+        };
+
+        const mainContent = document.getElementById('main-content');
+        const navButtons = document.getElementById('nav-buttons');
+        let chartInstance = null;
+        
+        const renderSection = (sectionKey) => {
+            const section = examData[sectionKey];
+            let html = `<section id="${sectionKey}" class="space-y-6">`;
+            html += `<div class="text-center mb-6"><h2 class="text-2xl sm:text-3xl font-bold text-slate-900">${section.title}</h2><p class="mt-2 text-slate-600 max-w-3xl mx-auto">${section.intro}</p></div>`;
+            
+            if (section.content) {
+                html += `<div class="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-slate-200">${section.content}</div>`;
+            } else if (section.questions) {
+                section.questions.forEach((q) => {
+                    html += `
+                        <div class="question-card bg-white p-4 sm:p-6 rounded-lg shadow-md border border-slate-200">
+                            <h3 class="font-bold text-lg text-slate-900">${q.title}</h3>
+                            <div class="question-text text-slate-700 mt-2">${q.text}</div>
+                            <button data-question-id="${q.id}" class="toggle-solution-btn mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-200">Show Solution &rarr;</button>
+                            <div id="solution-${q.id}" class="solution-content hidden mt-4 p-4 bg-slate-50 rounded-md border border-slate-200">${q.solution}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</section>`;
+            mainContent.innerHTML = html;
+            renderKaTeX();
+        };
+        
+        const renderKaTeX = () => {
+            document.querySelectorAll('.question-text, .solution-content, .formula, table td').forEach(el => {
+                // Process inline math (e.g., $...$)
+                el.innerHTML = el.innerHTML.replace(/\$(.*?)\$/g, (match, p1) => {
+                    try {
+                        return katex.renderToString(p1, { throwOnError: false, displayMode: false });
+                    } catch (e) { return match; }
+                });
+                // Process display math (e.g., <div class="formula">...</div>)
+                el.innerHTML = el.innerHTML.replace(/<div class="formula">(.*?)<\/div>/g, (match, p1) => {
+                     try {
+                        return `<div class="katex-display-container">${katex.renderToString(p1, { throwOnError: false, displayMode: true })}</div>`;
+                    } catch (e) { return match; }
+                });
+            });
+        };
+
+        const createVectorChart = () => {
+            const ctx = document.getElementById('vectorChart');
+            if (!ctx) return; // Exit if canvas not found
+
+            const chartCanvas = ctx.getContext('2d');
+            if(chartInstance) {
+                chartInstance.destroy();
+            }
+            chartInstance = new Chart(chartCanvas, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'd1 (8.66, 5.00)',
+                            data: [{x: 8.66, y: 5.00}],
+                            backgroundColor: 'rgba(255, 99, 132, 1)', // Red
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                        },
+                         {
+                            label: 'd2 (-7.50, 13.0)',
+                            data: [{x: -7.50, y: 13.0}],
+                            backgroundColor: 'rgba(54, 162, 235, 1)', // Blue
+                             pointRadius: 6,
+                            pointHoverRadius: 8,
+                        },
+                         {
+                            label: 'd3 (0, -12.0)',
+                            data: [{x: 0, y: -12.0}],
+                            backgroundColor: 'rgba(255, 206, 86, 1)', // Yellow
+                             pointRadius: 6,
+                            pointHoverRadius: 8,
+                        },
+                        {
+                            label: 'Resultant (1.16, 6.00)',
+                            data: [{x: 1.16, y: 6.00}],
+                            backgroundColor: 'rgba(75, 192, 192, 1)', // Green
+                            pointRadius: 8, // Larger for resultant
+                            pointHoverRadius: 10,
+                        }
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'East-West (m)', font: { size: 14, weight: 'bold' } },
+                            grid: { color: 'rgba(200, 200, 200, 0.2)' },
+                            min: -20, max: 20,
+                            ticks: { font: { size: 12 } }
+                        },
+                        y: {
+                            title: { display: true, text: 'North-South (m)', font: { size: 14, weight: 'bold' } },
+                             grid: { color: 'rgba(200, 200, 200, 0.2)' },
+                             min: -15, max: 20,
+                             ticks: { font: { size: 12 } }
+                        }
+                    },
+                    plugins: {
+                         legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                         },
+                         tooltip: {
+                             callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += `(${context.parsed.x.toFixed(2)} m, ${context.parsed.y.toFixed(2)} m)`;
+                                    return label;
+                                }
+                            },
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 }
+                        }
+                    },
+                    animation: {
+                        onComplete: ({ chart }) => {
+                            const ctx = chart.ctx;
+                            ctx.save();
+                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([5, 5]); // Dashed lines for vectors
+
+                            const origin = {x: chart.scales.x.getPixelForValue(0), y: chart.scales.y.getPixelForValue(0)};
+                            
+                            // Draw vectors from origin to points
+                            chart.data.datasets.forEach(dataset => {
+                                const meta = chart.getDatasetMeta(dataset.index);
+                                meta.data.forEach(element => {
+                                    ctx.beginPath();
+                                    ctx.moveTo(origin.x, origin.y);
+                                    ctx.lineTo(element.x, element.y);
+                                    ctx.stroke();
+                                    // Draw arrowheads (simple triangles)
+                                    const angle = Math.atan2(element.y - origin.y, element.x - origin.x);
+                                    const headLength = 10;
+                                    const headWidth = 7;
+                                    ctx.save();
+                                    ctx.translate(element.x, element.y);
+                                    ctx.rotate(angle);
+                                    ctx.fillStyle = dataset.backgroundColor;
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+                                    ctx.lineTo(-headLength, headWidth / 2);
+                                    ctx.lineTo(-headLength, -headWidth / 2);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.restore();
+                                });
+                            });
+                            ctx.restore();
+                        }
+                    }
+                }
+            });
+        }
+        
+        navButtons.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const targetSection = e.target.dataset.section;
+                
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-slate-700');
+                });
+                
+                e.target.classList.add('active');
+                e.target.classList.add('bg-blue-600', 'text-white');
+                e.target.classList.remove('bg-white', 'text-slate-700');
+                
+                renderSection(targetSection);
+            }
+        });
+        
+        mainContent.addEventListener('click', (e) => {
+            if (e.target.classList.contains('toggle-solution-btn')) {
+                const questionId = e.target.dataset.questionId;
+                const solutionDiv = document.getElementById(`solution-${questionId}`);
+                const isHidden = solutionDiv.classList.toggle('hidden');
+                e.target.innerHTML = isHidden ? 'Show Solution &rarr;' : 'Hide Solution &larr;';
+
+                // Specific logic for vector chart
+                if (questionId === 'q8' && !isHidden) {
+                   // Ensure chart renders after solution content is visible
+                   setTimeout(() => createVectorChart(), 0);
+                } else if (questionId === 'q8' && isHidden && chartInstance) {
+                    chartInstance.destroy(); // Destroy chart when solution is hidden
+                    chartInstance = null;
+                }
+            }
+        });
+
+        document.getElementById('reveal-all').addEventListener('click', () => {
+             document.querySelectorAll('.solution-content').forEach(el => el.classList.remove('hidden'));
+             document.querySelectorAll('.toggle-solution-btn').forEach(btn => btn.innerHTML = 'Hide Solution &larr;');
+             // If Q8 solution is now visible, render chart
+             if (document.getElementById('solution-q8') && !document.getElementById('solution-q8').classList.contains('hidden')) {
+                 setTimeout(() => createVectorChart(), 0);
+             }
+        });
+
+        document.getElementById('reset-all').addEventListener('click', () => {
+             document.querySelectorAll('.solution-content').forEach(el => el.classList.add('hidden'));
+             document.querySelectorAll('.toggle-solution-btn').forEach(btn => btn.innerHTML = 'Show Solution &rarr;');
+             // Destroy chart if it's visible
+             if (chartInstance) {
+                 chartInstance.destroy();
+                 chartInstance = null;
+             }
+        });
+
+        // Initial render on page load
+        renderSection('section1');
+    </script>
+</body>
+</html>
+
